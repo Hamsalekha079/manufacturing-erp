@@ -1,0 +1,460 @@
+import { useState } from 'react'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
+import Modal from '../components/Modal'
+import { useApp } from '../context/AppContext'
+
+// ─── DUMMY DATA ─────────────────────────────────────────
+const weeklyData = [
+  { week: 'Week 1', income: 45000, expense: 28000, profit: 17000 },
+  { week: 'Week 2', income: 62000, expense: 35000, profit: 27000 },
+  { week: 'Week 3', income: 38000, expense: 22000, profit: 16000 },
+  { week: 'Week 4', income: 71000, expense: 40000, profit: 31000 },
+]
+
+const monthlyData = [
+  { month: 'Jan', income: 180000, expense: 120000, profit: 60000 },
+  { month: 'Feb', income: 210000, expense: 140000, profit: 70000 },
+  { month: 'Mar', income: 195000, expense: 130000, profit: 65000 },
+  { month: 'Apr', income: 240000, expense: 155000, profit: 85000 },
+  { month: 'May', income: 216000, expense: 125000, profit: 91000 },
+]
+
+const initialIncome = [
+  { id: 1, category: 'Sale', description: 'INV-2026-0001 - Sri Lakshmi Stores', amount: 20000, date: '2026-05-13' },
+  { id: 2, category: 'Sale', description: 'INV-2026-0002 - Ramu', amount: 2500, date: '2026-05-11' },
+  { id: 3, category: 'Sale', description: 'INV-2026-0004 - Venkateswara Stores', amount: 18000, date: '2026-05-12' },
+]
+
+const initialExpenses = [
+  { id: 1, category: 'Material', description: 'Copper purchase - Ravi Kumar', amount: 42500, date: '2026-05-13' },
+  { id: 2, category: 'Salary', description: 'May salary - Krishna Rao', amount: 10800, date: '2026-05-12' },
+  { id: 3, category: 'Salary', description: 'May salary - Suresh', amount: 7000, date: '2026-05-11' },
+  { id: 4, category: 'Casting', description: 'Casting charges - Bhaskar', amount: 6000, date: '2026-05-13' },
+  { id: 5, category: 'Transport', description: 'Delivery to Guntur shops', amount: 1500, date: '2026-05-12' },
+  { id: 6, category: 'Other', description: 'Electricity bill', amount: 3200, date: '2026-05-09' },
+]
+
+const incomeCategories = ['Sale', 'Advance', 'Other']
+const expenseCategories = ['Material', 'Casting', 'Salary', 'Transport', 'Other']
+
+function Finance() {
+  const [activeTab, setActiveTab] = useState('overview')
+  const [chartType, setChartType] = useState('weekly')
+  const { income: incomeList, expenses: expenseList, addIncome, addExpense } = useApp()
+  const [showIncomeModal, setShowIncomeModal] = useState(false)
+  const [showExpenseModal, setShowExpenseModal] = useState(false)
+  const [incomeForm, setIncomeForm] = useState({ category: 'Sale', description: '', amount: '', date: '' })
+  const [expenseForm, setExpenseForm] = useState({ category: 'Material', description: '', amount: '', date: '' })
+
+  const chartData = chartType === 'weekly' ? weeklyData : monthlyData
+  const xKey = chartType === 'weekly' ? 'week' : 'month'
+
+  const totalIncome = incomeList.reduce((s, i) => s + i.amount, 0)
+  const totalExpense = expenseList.reduce((s, e) => s + e.amount, 0)
+  const totalProfit = totalIncome - totalExpense
+
+ function handleAddIncome() {
+  if (!incomeForm.description || !incomeForm.amount) return
+  addIncome({
+    category: incomeForm.category,
+    description: incomeForm.description,
+    amount: parseFloat(incomeForm.amount),
+    date: incomeForm.date || new Date().toISOString().split('T')[0]
+  })
+  setIncomeForm({ category: 'Sale', description: '', amount: '', date: '' })
+  setShowIncomeModal(false)
+}
+
+function handleAddExpense() {
+  if (!expenseForm.description || !expenseForm.amount) return
+  addExpense({
+    category: expenseForm.category,
+    description: expenseForm.description,
+    amount: parseFloat(expenseForm.amount),
+    date: expenseForm.date || new Date().toISOString().split('T')[0]
+  })
+  setExpenseForm({ category: 'Material', description: '', amount: '', date: '' })
+  setShowExpenseModal(false)
+}
+
+  const categoryColors = {
+    Material: 'bg-blue-100 text-blue-600',
+    Casting: 'bg-purple-100 text-purple-600',
+    Salary: 'bg-orange-100 text-orange-600',
+    Transport: 'bg-yellow-100 text-yellow-600',
+    Sale: 'bg-green-100 text-green-600',
+    Advance: 'bg-teal-100 text-teal-600',
+    Other: 'bg-gray-100 text-gray-600',
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-800">Finance</h2>
+          <p className="text-gray-500 text-sm mt-1">Track investment, revenue and profit</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowIncomeModal(true)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"
+          >
+            + Add Income
+          </button>
+          <button
+            onClick={() => setShowExpenseModal(true)}
+            className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"
+          >
+            + Add Expense
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Total Income</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">₹{totalIncome.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-1">This month</p>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Total Expense</p>
+          <p className="text-2xl font-bold text-red-500 mt-1">₹{totalExpense.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-1">This month</p>
+        </div>
+        <div className={`rounded-xl shadow p-5 ${totalProfit >= 0 ? 'bg-indigo-600' : 'bg-red-600'}`}>
+          <p className="text-sm text-indigo-200">Net Profit</p>
+          <p className="text-2xl font-bold text-white mt-1">₹{Math.abs(totalProfit).toLocaleString()}</p>
+          <p className="text-xs text-indigo-200 mt-1">{totalProfit >= 0 ? 'Profit' : 'Loss'} this month</p>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-gray-200">
+        {['overview', 'income', 'expenses'].map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
+              activeTab === tab
+                ? 'border-indigo-600 text-indigo-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            {tab === 'income' ? `Income (${incomeList.length})` : tab === 'expenses' ? `Expenses (${expenseList.length})` : 'Overview'}
+          </button>
+        ))}
+      </div>
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="space-y-4">
+          <div className="bg-white rounded-xl shadow p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="font-semibold text-gray-800">Income vs Expense vs Profit</h3>
+              <div className="flex gap-2">
+                {['weekly', 'monthly'].map(t => (
+                  <button
+                    key={t}
+                    onClick={() => setChartType(t)}
+                    className={`px-3 py-1 rounded-lg text-sm capitalize ${
+                      chartType === t
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                <Tooltip formatter={v => `₹${v.toLocaleString()}`} />
+                <Legend />
+                <Bar dataKey="income" fill="#16a34a" name="Income" radius={[4,4,0,0]} />
+                <Bar dataKey="expense" fill="#ef4444" name="Expense" radius={[4,4,0,0]} />
+                <Bar dataKey="profit" fill="#4f46e5" name="Profit" radius={[4,4,0,0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="bg-white rounded-xl shadow p-6">
+            <h3 className="font-semibold text-gray-800 mb-6">Profit Trend</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={monthlyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />
+                <Tooltip formatter={v => `₹${v.toLocaleString()}`} />
+                <Line type="monotone" dataKey="profit" stroke="#4f46e5" strokeWidth={2} dot={{ fill: '#4f46e5' }} name="Profit" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Expense breakdown by category */}
+          <div className="bg-white rounded-xl shadow p-6">
+            <h3 className="font-semibold text-gray-800 mb-4">Expense Breakdown</h3>
+            <div className="space-y-3">
+              {expenseCategories.map(cat => {
+                const total = expenseList.filter(e => e.category === cat).reduce((s, e) => s + e.amount, 0)
+                const percent = totalExpense > 0 ? ((total / totalExpense) * 100).toFixed(1) : 0
+                if (total === 0) return null
+                return (
+                  <div key={cat}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="text-gray-700 font-medium">{cat}</span>
+                      <span className="text-gray-800 font-bold">₹{total.toLocaleString()} <span className="text-gray-400 font-normal">({percent}%)</span></span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                      <div
+                        className="bg-indigo-500 h-2 rounded-full"
+                        style={{ width: `${percent}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Income Tab */}
+      {activeTab === 'income' && (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="p-5 border-b flex justify-between items-center">
+            <h3 className="font-semibold text-gray-800">Income Entries</h3>
+            <button
+              onClick={() => setShowIncomeModal(true)}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-green-700"
+            >
+              + Add Income
+            </button>
+          </div>
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-xs text-gray-400 uppercase">
+                <th className="px-5 py-3">Description</th>
+                <th className="px-5 py-3">Category</th>
+                <th className="px-5 py-3">Amount</th>
+                <th className="px-5 py-3">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {incomeList.map(i => (
+                <tr key={i.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3 text-sm text-gray-800">{i.description}</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${categoryColors[i.category]}`}>
+                      {i.category}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-sm font-bold text-green-600">₹{i.amount.toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-400">{i.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Expenses Tab */}
+      {activeTab === 'expenses' && (
+        <div className="bg-white rounded-xl shadow overflow-hidden">
+          <div className="p-5 border-b flex justify-between items-center">
+            <h3 className="font-semibold text-gray-800">Expense Entries</h3>
+            <button
+              onClick={() => setShowExpenseModal(true)}
+              className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm hover:bg-red-600"
+            >
+              + Add Expense
+            </button>
+          </div>
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-xs text-gray-400 uppercase">
+                <th className="px-5 py-3">Description</th>
+                <th className="px-5 py-3">Category</th>
+                <th className="px-5 py-3">Amount</th>
+                <th className="px-5 py-3">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {expenseList.map(e => (
+                <tr key={e.id} className="hover:bg-gray-50">
+                  <td className="px-5 py-3 text-sm text-gray-800">{e.description}</td>
+                  <td className="px-5 py-3">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${categoryColors[e.category]}`}>
+                      {e.category}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3 text-sm font-bold text-red-500">₹{e.amount.toLocaleString()}</td>
+                  <td className="px-5 py-3 text-sm text-gray-400">{e.date}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ── ADD INCOME MODAL ── */}
+      {showIncomeModal && (
+        <Modal title="Add Income" onClose={() => setShowIncomeModal(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Category</label>
+              <div className="flex gap-2 flex-wrap">
+                {incomeCategories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setIncomeForm({ ...incomeForm, category: cat })}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                      incomeForm.category === cat
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Description</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={incomeForm.description}
+                onChange={e => setIncomeForm({ ...incomeForm, description: e.target.value })}
+                placeholder="e.g. Payment from Sri Lakshmi Stores"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Amount (₹)</label>
+                <input
+                  type="number"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={incomeForm.amount}
+                  onChange={e => setIncomeForm({ ...incomeForm, amount: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Date</label>
+                <input
+                  type="date"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={incomeForm.date}
+                  onChange={e => setIncomeForm({ ...incomeForm, date: e.target.value })}
+                />
+              </div>
+            </div>
+            {incomeForm.amount && (
+              <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 flex justify-between">
+                <span className="text-sm text-green-700">{incomeForm.category} — {incomeForm.description || 'Income'}</span>
+                <span className="font-bold text-green-700">+₹{parseFloat(incomeForm.amount).toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleAddIncome}
+                className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700"
+              >
+                Add Income
+              </button>
+              <button
+                onClick={() => setShowIncomeModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ── ADD EXPENSE MODAL ── */}
+      {showExpenseModal && (
+        <Modal title="Add Expense" onClose={() => setShowExpenseModal(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Category</label>
+              <div className="flex gap-2 flex-wrap">
+                {expenseCategories.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setExpenseForm({ ...expenseForm, category: cat })}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition ${
+                      expenseForm.category === cat
+                        ? 'bg-red-500 text-white border-red-500'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Description</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={expenseForm.description}
+                onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                placeholder="e.g. Copper purchase from Ravi Kumar"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Amount (₹)</label>
+                <input
+                  type="number"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={expenseForm.amount}
+                  onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Date</label>
+                <input
+                  type="date"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={expenseForm.date}
+                  onChange={e => setExpenseForm({ ...expenseForm, date: e.target.value })}
+                />
+              </div>
+            </div>
+            {expenseForm.amount && (
+              <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex justify-between">
+                <span className="text-sm text-red-700">{expenseForm.category} — {expenseForm.description || 'Expense'}</span>
+                <span className="font-bold text-red-700">-₹{parseFloat(expenseForm.amount).toLocaleString()}</span>
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={handleAddExpense}
+                className="flex-1 bg-red-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-red-600"
+              >
+                Add Expense
+              </button>
+              <button
+                onClick={() => setShowExpenseModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
+export default Finance
