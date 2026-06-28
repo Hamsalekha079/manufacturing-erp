@@ -240,7 +240,7 @@ function Stock() {
       {/* Adjust Stock Modal */}
       {showAdjustModal && (
         <Modal title="Adjust Stock (Correction)" onClose={() => setShowAdjustModal(false)}>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[25rem] overflow-y-scroll">
             {/* Stock type */}
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Stock Type</label>
@@ -339,7 +339,7 @@ function Stock() {
               >
                 <option value="">Select reason</option>
                 {(form.type === 'add'
-                  ? ['Return from customer', 'Correction', 'Found extra']
+                  ? ['New stock','Return from customer', 'Correction', 'Found extra']
                   : ['Damaged', 'Lost', 'Correction']
                 ).map(r => (
                   <option key={r} value={r}>{r}</option>

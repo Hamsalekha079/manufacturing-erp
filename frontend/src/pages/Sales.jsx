@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Search } from 'lucide-react'
 import Modal from '../components/Modal'
 import { useApp } from '../context/AppContext'
 
@@ -32,6 +32,7 @@ function OrderCard({ order, customerId }) {
   const [showPayModal, setShowPayModal] = useState(false)
   const [payForm, setPayForm] = useState({ amount: '', method: 'Cash' })
   const [stockWarnings, setStockWarnings] = useState([])
+  const [search,setSearch] = useState('')
 
   const paid = order.payments.reduce((s, p) => s + p.amount, 0)
   const balance = order.totalAmount - paid
@@ -339,14 +340,12 @@ function selectProduct(index, productCode) {
   }
 
   function handleSubmitOrder() {
-    const validItems = orderForm.items.filter(i => i.code && i.qty && i.price)
-    if (validItems.length === 0) return
-    const warnings = checkStockWarnings(validItems)
-    setStockWarnings(warnings)
-    addOrder(customer.id, { ...orderForm, items: validItems })
-    setOrderForm({ date: '', dueDate: '', method: 'Cash', items: [{ code: '', name: '', qty: 1, price: 0 }] })
-    setShowOrderModal(false)
-  }
+  const validItems = orderForm.items.filter(i => i.code && i.qty && i.price)
+  if (validItems.length === 0) return
+  addOrder(customer.id, { ...orderForm, items: validItems })
+  setOrderForm({ date: '', dueDate: '', method: 'Cash', items: [{ code: '', name: '', qty: 1, price: 0 }] })
+  setShowOrderModal(false)
+}
 
   const orderTotal = orderForm.items.reduce((s, i) => s + (i.qty * i.price), 0)
 
@@ -456,12 +455,16 @@ function selectProduct(index, productCode) {
           <select
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             value={selectedCategory}
-            onChange={e => {
-              const updated = orderForm.items.map((it, idx) =>
-                idx === i ? { ...it, code: '', name: '', price: 0, qty: it.qty, _category: e.target.value } : it
-              )
-              setOrderForm({ ...orderForm, items: updated })
-            }}
+           onChange={e => {
+  const qty = parseInt(e.target.value) || 0
+  const updated = orderForm.items.map((it, idx) =>
+    idx === i ? { ...it, qty } : it
+  )
+  setOrderForm({ ...orderForm, items: updated })
+  // Live stock check
+  const warnings = checkStockWarnings(updated.filter(it => it.code && it.qty))
+  setStockWarnings(warnings)
+}}
           >
             <option value="">Select category</option>
             {categories.map(c => (
@@ -585,11 +588,13 @@ function selectProduct(index, productCode) {
 // ─── MAIN COMPONENT ──────────────────────────────────────
 function Sales() {
   
+  const [locationTab, setLocationTab] = useState('all')
+  const [search, setSearch] = useState('')
   const { customers, addCustomer, addWalkinSale, products , walkinSales } = useApp()
   const [activeTab, setActiveTab] = useState('shops')
   const [showNewCustomer, setShowNewCustomer] = useState(false)
   const [showNewWalkin, setShowNewWalkin] = useState(false)
-  const [customerForm, setCustomerForm] = useState({ name: '', location: '', phone: '' })
+  const [customerForm, setCustomerForm] = useState({ name: '', location: '', phone: '', locationType: 'local' })
   const [walkinForm, setWalkinForm] = useState({
     name: '', phone: '', method: 'Cash', date: '',
     items: [{ code: '', name: '', qty: 1, price: 0 }]
@@ -604,6 +609,13 @@ function Sales() {
   const overdueCount = customers.filter(c =>
     c.orders.some(o => getOrderStatus(o) === 'overdue')).length
 
+   const filteredCustomers = customers.filter(c => {
+  const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+    c.phone.toLowerCase().includes(search.toLowerCase()) ||
+    c.location.toLowerCase().includes(search.toLowerCase())
+  const matchesLocation = locationTab === 'all' || c.locationType === locationTab
+  return matchesSearch && matchesLocation
+})
   function handleAddCustomer() {
     if (!customerForm.name || !customerForm.phone) return
     addCustomer(customerForm)
@@ -633,6 +645,7 @@ function Sales() {
   function removeWalkinItem(index) {
     setWalkinForm({ ...walkinForm, items: walkinForm.items.filter((_, i) => i !== index) })
   }
+
 
   return (
     <div className="space-y-6">
@@ -694,13 +707,40 @@ function Sales() {
           </button>
         ))}
       </div>
-
+       <div className="relative">
+      <input
+        type="text"
+        placeholder="Search customer, phone or location..."
+         className="border border-gray-300 rounded-lg w-[290px] px-3 py-2 flex place-self-end text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
+      <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-white bg-blue-500 h-[30px] w-[30px] rounded p-2" />
+    </div>
       {/* Shops */}
       {activeTab === 'shops' && (
-        <div className="space-y-3">
-          {customers.map(c => <CustomerRow key={c.id} customer={c} />)}
-        </div>
-      )}
+  <div className="space-y-3">
+    <div className="flex gap-2">
+      {['all', 'local', 'non-local'].map(t => (
+        <button
+          key={t}
+          onClick={() => setLocationTab(t)}
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition ${
+            locationTab === t
+              ? 'bg-indigo-600 text-white'
+              : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {t === 'all' ? 'All' : t === 'local' ? '📍 Local' : '🚚 Non-Local'}
+          {' '}({customers.filter(c => t === 'all' || c.locationType === t).length})
+        </button>
+      ))}
+    </div>
+    {filteredCustomers.map(c => (
+      <CustomerRow key={c.id} customer={c} />
+    ))}
+  </div>
+)}
 
       {/* Walk-in */}
       {activeTab === 'walk-in' && (
@@ -761,14 +801,45 @@ function Sales() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Location</label>
-              <input
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={customerForm.location}
-                onChange={e => setCustomerForm({ ...customerForm, location: e.target.value })}
-                placeholder="e.g. Vijayawada"
-              />
-            </div>
+  <label className="text-sm font-medium text-gray-700 block mb-1">Location Type</label>
+  <div className="flex gap-2">
+    {['local', 'non-local'].map(type => (
+      <button
+        key={type}
+        onClick={() => setCustomerForm({ ...customerForm, locationType: type, location: '' })}
+        className={`flex-1 py-2 rounded-lg text-sm font-medium border transition capitalize ${
+          customerForm.locationType === type
+            ? 'bg-indigo-600 text-white border-indigo-600'
+            : 'bg-white text-gray-600 border-gray-300'
+        }`}
+      >
+        {type === 'local' ? '📍 Local (Tirumala/Tirupati)' : '🚚 Non-Local'}
+      </button>
+    ))}
+  </div>
+</div>
+
+<div>
+  <label className="text-sm font-medium text-gray-700 block mb-1">Location</label>
+  {customerForm.locationType === 'local' ? (
+    <select
+      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      value={customerForm.location}
+      onChange={e => setCustomerForm({ ...customerForm, location: e.target.value })}
+    >
+      <option value="">Select location</option>
+      <option value="Tirumala">Tirumala</option>
+      <option value="Tirupati">Tirupati</option>
+    </select>
+  ) : (
+    <input
+      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+      value={customerForm.location}
+      onChange={e => setCustomerForm({ ...customerForm, location: e.target.value })}
+      placeholder="e.g. Vijayawada, Guntur"
+    />
+  )}
+</div>
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Phone</label>
               <input

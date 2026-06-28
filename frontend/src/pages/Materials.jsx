@@ -1,49 +1,10 @@
 import { useState } from 'react'
 import Modal from '../components/Modal'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Icon , Search } from 'lucide-react'
+import { useApp } from '../context/AppContext'
 
-
-// ─── MASTER DATA ────────────────────────────────────────
-const suppliers = [
-  { id: 1, name: 'Ravi Kumar', phone: '9876543210', paymentMode: 'POSTPAID', balance: 12500 },
-  { id: 2, name: 'Suresh Babu', phone: '9876543211', paymentMode: 'PREPAID', balance: 5000 },
-  { id: 3, name: 'Mahesh Reddy', phone: '9876543212', paymentMode: 'POSTPAID', balance: 8200 },
-  { id: 4, name: 'Venkat Rao', phone: '9876543213', paymentMode: 'PREPAID', balance: 3100 },
-]
-
-const castingCenters = [
-  { id: 1, name: 'Bhaskar', phone: '9876541111', balance: 8400 },
-  { id: 2, name: 'Gangadharam', phone: '9876542222', balance: 5200 },
-  { id: 3, name: 'Subbu', phone: '9876543333', balance: 3100 },
-]
-
-// ─── RAW MATERIAL ENTRIES ───────────────────────────────
-const initialRawMaterial = [
-  { id: 1, supplierId: 1, supplierName: 'Ravi Kumar', orderedKg: 50, receivedKg: 60, pricePerKg: 850, totalAmount: 51000, paidAmount: 30000, date: '2026-05-13' },
-  { id: 2, supplierId: 2, supplierName: 'Suresh Babu', orderedKg: 30, receivedKg: 28, pricePerKg: 860, totalAmount: 24080, paidAmount: 24080, date: '2026-05-12' },
-  { id: 3, supplierId: 3, supplierName: 'Mahesh Reddy', orderedKg: 40, receivedKg: 40, pricePerKg: 855, totalAmount: 34200, paidAmount: 20000, date: '2026-05-11' },
-]
-
-// ─── CASTING ROUND 1 (Raw Material) ─────────────────────
-const castingRound1 = [
-  { id: 1, centerId: 1, centerName: 'Bhaskar', sentKg: 50, returnedKg: 55, pendingKg: 5, ratePerKg: 120, totalAmount: 6000, paidAmount: 6000, date: '2026-05-13' },
-  { id: 2, centerId: 2, centerName: 'Gangadharam', sentKg: 30, returnedKg: 28, pendingKg: 2, ratePerKg: 115, totalAmount: 3450, paidAmount: 2000, date: '2026-05-12' },
-  { id: 3, centerId: 3, centerName: 'Subbu', sentKg: 40, returnedKg: 40, pendingKg: 0, ratePerKg: 118, totalAmount: 4720, paidAmount: 4720, date: '2026-05-11' },
-]
-
-// ─── PRODUCTION RUNS ────────────────────────────────────
-const productionRuns = [
-  { id: 1, date: '2026-05-14', materialUsedKg: 45, productType: 'Kalash - Standard', productsMade: 38, wasteKg: 7 },
-  { id: 2, date: '2026-05-13', materialUsedKg: 28, productType: 'Panchapatra', productsMade: 24, wasteKg: 4 },
-  { id: 3, date: '2026-05-12', materialUsedKg: 40, productType: 'Kalash - Light Weight', productsMade: 32, wasteKg: 8 },
-]
-
-// ─── CASTING ROUND 2 (Waste) ────────────────────────────
-const castingRound2 = [
-  { id: 1, centerId: 1, centerName: 'Bhaskar', wasteKg: 7, returnedKg: 6, pendingKg: 1, ratePerKg: 90, totalAmount: 630, paidAmount: 630, date: '2026-05-15' },
-  { id: 2, centerId: 2, centerName: 'Gangadharam', wasteKg: 4, returnedKg: 3, pendingKg: 1, ratePerKg: 85, totalAmount: 340, paidAmount: 0, date: '2026-05-14' },
-]
-
+const suppliers = []
+const castingCenters = []
 // ─── REUSABLE COMPONENTS ────────────────────────────────
 
 function TabBar({ tabs, active, onChange }) {
@@ -83,7 +44,9 @@ function StatusBadge({ paid, total }) {
 
 // ─── TAB 1: RAW MATERIAL ────────────────────────────────
 function RawMaterialTab() {
-  const [entries, setEntries] = useState(initialRawMaterial)
+  const { suppliers } = useApp()
+  const [search, setSearch] = useState('')
+  const [entries, setEntries] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [openSuppliers, setOpenSuppliers] = useState({})
   const [form, setForm] = useState({
@@ -116,10 +79,13 @@ function RawMaterialTab() {
     setOpenSuppliers(prev => ({ ...prev, [name]: !prev[name] }))
   }
 
-  const grouped = suppliers.map(s => ({
+  const grouped = suppliers
+  .filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
+  .map(s => ({
     ...s,
     entries: entries.filter(e => e.supplierName === s.name)
   }))
+  
 
   const totalOrdered = entries.reduce((s, e) => s + e.orderedKg, 0)
   const totalReceived = entries.reduce((s, e) => s + e.receivedKg, 0)
@@ -159,12 +125,37 @@ function RawMaterialTab() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-gray-800">Suppliers</h3>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-        >
-          + Add Purchase
-        </button>
+        <div>
+          <div style={{ position: "relative",width: "200px", display: "inline-block", marginRight: "10px" }}>
+           <input
+              type="text"
+              placeholder="Search suppliers..."
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <Search
+            className="cursor-pointer bg-indigo-600"
+              size={25}
+              style={{
+                position: "absolute",
+                right: "20px",
+                top: "50%",            
+                transform: "translateY(-50%)",
+                color: "#ffffff",
+                padding: "4px",
+                borderRadius: "4px",
+              }}
+            />
+            </div>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+            >
+              + Add Purchase
+            </button>
+        </div>
+        
       </div>
 
       {/* Supplier wise accordion */}
@@ -395,7 +386,9 @@ function RawMaterialTab() {
 
 // ─── TAB 2: CASTING ROUND 1 ─────────────────────────────
 function CastingRound1Tab() {
-  const [entries, setEntries] = useState(castingRound1)
+  const { castingCenters } = useApp()
+  const [search, setSearch] = useState('')
+  const [entries, setEntries] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [openCenters, setOpenCenters] = useState({})
   const [form, setForm] = useState({
@@ -431,7 +424,9 @@ function CastingRound1Tab() {
     setOpenCenters(prev => ({ ...prev, [name]: !prev[name] }))
   }
 
-  const grouped = castingCenters.map(c => ({
+  const grouped = castingCenters
+  .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
+  .map(c => ({
     ...c,
     entries: entries.filter(e => e.centerName === c.name)
   }))
@@ -471,12 +466,24 @@ function CastingRound1Tab() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-gray-800">Casting Centers</h3>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-        >
-          + Add Entry
-        </button>
+        <div className="flex items-center gap-2">
+    <div className="relative">
+      <input
+        type="text"
+        placeholder="Search centers..."
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
+      <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+    </div>
+    <button
+      onClick={() => setShowModal(true)}
+      className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+    >
+      + Add Entry
+    </button>
+  </div>
       </div>
 
       {/* Center wise accordion */}
@@ -701,7 +708,8 @@ function CastingRound1Tab() {
 
 // ─── TAB 3: WASTE & CASTING ROUND 2 ─────────────────────
 function WasteCastingTab() {
-  const [entries, setEntries] = useState(castingRound2)
+  const { castingCenters } = useApp()
+  const [entries, setEntries] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [openCenters, setOpenCenters] = useState({})
   const [form, setForm] = useState({
@@ -739,7 +747,7 @@ function WasteCastingTab() {
     entries: entries.filter(e => e.centerName === c.name)
   }))
 
-  const totalWaste = productionRuns.reduce((s, p) => s + p.wasteKg, 0)
+  const totalWaste = 0
   const totalSent = entries.reduce((s, e) => s + e.wasteKg, 0)
   const totalReturned = entries.reduce((s, e) => s + e.returnedKg, 0)
   const totalPending = entries.reduce((s, e) => s + e.pendingKg, 0)
@@ -965,7 +973,7 @@ function WasteCastingTab() {
 }
 // ─── TAB 4: PRODUCTION ──────────────────────────────────
 function ProductionTab() {
-  const [runs, setRuns] = useState(productionRuns)
+  const [runs, setRuns] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({
     productType: '', materialUsedKg: '', productsMade: '', wasteKg: '', date: ''

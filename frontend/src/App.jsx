@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useApp } from './context/AppContext'
 import Layout from './components/Layout'
+import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Materials from './pages/Materials'
 import Employees from './pages/Employees'
@@ -9,6 +11,12 @@ import Finance from './pages/Finance'
 import Products from './pages/Products'
 
 function App() {
+  const { auth } = useApp()
+
+  if (!auth.isLoggedIn) {
+    return <Login />
+  }
+
   return (
     
     <BrowserRouter>

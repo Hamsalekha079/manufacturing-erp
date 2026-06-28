@@ -3,37 +3,6 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, L
 import Modal from '../components/Modal'
 import { useApp } from '../context/AppContext'
 
-// ─── DUMMY DATA ─────────────────────────────────────────
-const weeklyData = [
-  { week: 'Week 1', income: 45000, expense: 28000, profit: 17000 },
-  { week: 'Week 2', income: 62000, expense: 35000, profit: 27000 },
-  { week: 'Week 3', income: 38000, expense: 22000, profit: 16000 },
-  { week: 'Week 4', income: 71000, expense: 40000, profit: 31000 },
-]
-
-const monthlyData = [
-  { month: 'Jan', income: 180000, expense: 120000, profit: 60000 },
-  { month: 'Feb', income: 210000, expense: 140000, profit: 70000 },
-  { month: 'Mar', income: 195000, expense: 130000, profit: 65000 },
-  { month: 'Apr', income: 240000, expense: 155000, profit: 85000 },
-  { month: 'May', income: 216000, expense: 125000, profit: 91000 },
-]
-
-const initialIncome = [
-  { id: 1, category: 'Sale', description: 'INV-2026-0001 - Sri Lakshmi Stores', amount: 20000, date: '2026-05-13' },
-  { id: 2, category: 'Sale', description: 'INV-2026-0002 - Ramu', amount: 2500, date: '2026-05-11' },
-  { id: 3, category: 'Sale', description: 'INV-2026-0004 - Venkateswara Stores', amount: 18000, date: '2026-05-12' },
-]
-
-const initialExpenses = [
-  { id: 1, category: 'Material', description: 'Copper purchase - Ravi Kumar', amount: 42500, date: '2026-05-13' },
-  { id: 2, category: 'Salary', description: 'May salary - Krishna Rao', amount: 10800, date: '2026-05-12' },
-  { id: 3, category: 'Salary', description: 'May salary - Suresh', amount: 7000, date: '2026-05-11' },
-  { id: 4, category: 'Casting', description: 'Casting charges - Bhaskar', amount: 6000, date: '2026-05-13' },
-  { id: 5, category: 'Transport', description: 'Delivery to Guntur shops', amount: 1500, date: '2026-05-12' },
-  { id: 6, category: 'Other', description: 'Electricity bill', amount: 3200, date: '2026-05-09' },
-]
-
 const incomeCategories = ['Sale', 'Advance', 'Other']
 const expenseCategories = ['Material', 'Casting', 'Salary', 'Transport', 'Other']
 
@@ -46,13 +15,41 @@ function Finance() {
   const [incomeForm, setIncomeForm] = useState({ category: 'Sale', description: '', amount: '', date: '' })
   const [expenseForm, setExpenseForm] = useState({ category: 'Material', description: '', amount: '', date: '' })
 
-  const chartData = chartType === 'weekly' ? weeklyData : monthlyData
+  function buildChartData(period) {
+    const groups = {}
+    const allEntries = [
+      ...incomeList.map(i => ({ ...i, type: 'income' })),
+      ...expenseList.map(e => ({ ...e, type: 'expense' }))
+    ]
+    for (const entry of allEntries) {
+      const date = new Date(entry.date)
+      let key
+      if (period === 'weekly') {
+        const weekNum = Math.ceil(date.getDate() / 7)
+        key = `${date.toLocaleString('default', { month: 'short' })} W${weekNum}`
+      } else {
+        key = date.toLocaleString('default', { month: 'short', year: '2-digit' })
+      }
+      if (!groups[key]) groups[key] = { income: 0, expense: 0, sortDate: date }
+      if (entry.type === 'income') groups[key].income += entry.amount
+      else groups[key].expense += entry.amount
+    }
+    return Object.entries(groups)
+      .sort((a, b) => a[1].sortDate - b[1].sortDate)
+      .map(([key, val]) => ({
+        [period === 'weekly' ? 'week' : 'month']: key,
+        income: val.income,
+        expense: val.expense,
+        profit: val.income - val.expense
+      }))
+  }
+
+  const chartData = buildChartData(chartType)
   const xKey = chartType === 'weekly' ? 'week' : 'month'
 
   const totalIncome = incomeList.reduce((s, i) => s + i.amount, 0)
   const totalExpense = expenseList.reduce((s, e) => s + e.amount, 0)
   const totalProfit = totalIncome - totalExpense
-
  function handleAddIncome() {
   if (!incomeForm.description || !incomeForm.amount) return
   addIncome({
@@ -186,7 +183,7 @@ function handleAddExpense() {
           <div className="bg-white rounded-xl shadow p-6">
             <h3 className="font-semibold text-gray-800 mb-6">Profit Trend</h3>
             <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={monthlyData}>
+              <LineChart data={buildChartData('monthly')}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                 <XAxis dataKey="month" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} />

@@ -3,40 +3,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react'
 import Modal from '../components/Modal'
 import { useApp } from '../context/AppContext'
 
-const allProducts = [
-  { code: 'Sd 30', name: 'Kalash Standard 30' },
-  { code: 'Sd 50', name: 'Kalash Standard 50' },
-  { code: 'Sd 70', name: 'Kalash Standard 70' },
-  { code: 'Sd 100', name: 'Kalash Standard 100' },
-  { code: 'Sd 150', name: 'Kalash Standard 150' },
-  { code: 'Sd 200', name: 'Kalash Standard 200' },
-  { code: 'Sd 250', name: 'Kalash Standard 250' },
-  { code: 'LW 50', name: 'Kalash LW 50' },
-  { code: 'LW 70', name: 'Kalash LW 70' },
-  { code: 'LW 100', name: 'Kalash LW 100' },
-  { code: 'LW 150', name: 'Kalash LW 150' },
-  { code: 'LW 200', name: 'Kalash LW 200' },
-  { code: 'LW 250', name: 'Kalash LW 250' },
-  { code: 'AL 100', name: 'Kalash AL 100' },
-  { code: 'AL 150', name: 'Kalash AL 150' },
-  { code: 'AL 200', name: 'Kalash AL 200' },
-  { code: 'AL 250', name: 'Kalash AL 250' },
-  { code: 'BPP-S', name: 'Panchapatra Small' },
-  { code: 'BPP-M', name: 'Panchapatra Medium' },
-  { code: 'BPP-B', name: 'Panchapatra Large' },
-  { code: 'GL-M', name: 'Glass Medium' },
-  { code: 'GL-L', name: 'Glass Large' },
-  { code: 'BPL-1', name: 'Plate 1' },
-  { code: 'BPL-2', name: 'Plate 2' },
-  { code: 'BPL-3', name: 'Plate 3' },
-  { code: 'BPL-4', name: 'Plate 4' },
-  { code: 'BPL-5', name: 'Plate 5' },
-  { code: 'Ud-S', name: 'Spoon Small' },
-  { code: 'Ud-B', name: 'Spoon Big' },
-  { code: 'KK-S', name: 'Kubera Kuncham Small' },
-  { code: 'KK-M', name: 'Kubera Kuncham Medium' },
-  { code: 'KK-B', name: 'Kubera Kuncham Large' },
-]
+
 
 const paymentMethods = ['Cash', 'PhonePe', 'GPay', 'Bank Transfer']
 
@@ -595,7 +562,7 @@ function Employees() {
   const [empForm, setEmpForm] = useState({
     name: '', phone: '', role: '', salaryType: 'DAILY', dailyRate: '', assignedProducts: []
   })
-  const [newProduct, setNewProduct] = useState({ code: '', rate: '' })
+  const [newProduct, setNewProduct] = useState({ code: '', rate: '', workType: '' })
 
   function handleAddEmployee() {
     if (!empForm.name || !empForm.phone) return
@@ -609,8 +576,8 @@ function Employees() {
     setShowAddModal(false)
   }
 
-  function addProductToForm() {
-  if (!newProduct.code || !newProduct.rate) return
+ function addProductToForm() {
+  if (!newProduct.code || !newProduct.rate || !newProduct.workType) return
   const product = products.find(p => p.code === newProduct.code)
   if (!product) return
   setEmpForm({
@@ -618,15 +585,19 @@ function Employees() {
     assignedProducts: [...empForm.assignedProducts, {
       code: newProduct.code,
       name: `${product.name} ${product.size}`,
+      workType: newProduct.workType,
       rate: parseFloat(newProduct.rate)
     }]
   })
-  setNewProduct({ code: '', rate: '' })
+  setNewProduct({ code: '', rate: '', workType: '' })
 }
 
-  function removeProductFromForm(code) {
-    setEmpForm({ ...empForm, assignedProducts: empForm.assignedProducts.filter(p => p.code !== code) })
-  }
+  function removeProductFromForm(code, workType) {
+  setEmpForm({
+    ...empForm,
+    assignedProducts: empForm.assignedProducts.filter(p => !(p.code === code && p.workType === workType))
+  })
+}
 
   const dailyEmployees = employees.filter(e => e.salaryType === 'DAILY')
   const labourEmployees = employees.filter(e => e.salaryType === 'LABOUR')
@@ -771,62 +742,95 @@ function Employees() {
             )}
 
             {empForm.salaryType === 'LABOUR' && (
-              <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700 block">Assign Products & Rates</label>
-                <div className="flex gap-2">
-                  <select
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    value={newProduct.code}
-                    onChange={e => {
-                      const product = products.find(p => p.code === e.target.value)
-                      setNewProduct({
-                        code: e.target.value,
-                        rate: product ? product.labourRate : ''
-                      })
-                    }}
-                  >
-                    <option value="">Select product</option>
-                    {products
-                      .filter(p => !empForm.assignedProducts.find(ap => ap.code === p.code))
-                      .map(p => (
-                        <option key={p.code} value={p.code}>
-                          {p.code} — {p.name} {p.size} (Labour: ₹{p.labourRate}/pc)
-                        </option>
-                      ))
-                    }
-                  </select>
-                  <input
-                    type="number"
-                    className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="₹/pc"
-                    value={newProduct.rate}
-                    onChange={e => setNewProduct({ ...newProduct, rate: e.target.value })}
-                  />
-                  <button
-                    onClick={addProductToForm}
-                    className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-orange-600"
-                  >
-                    Add
-                  </button>
-                </div>
-                {empForm.assignedProducts.length > 0 && (
-                  <div className="space-y-1">
-                    {empForm.assignedProducts.map((p, i) => (
-                      <div key={i} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-                        <span className="text-sm text-gray-700">{p.code} — {p.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-orange-600">₹{p.rate}/pc</span>
-                          <button
-                            onClick={() => removeProductFromForm(p.code)}
-                            className="text-red-400 hover:text-red-600 text-lg"
-                          >×</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+  <div className="space-y-3">
+    <label className="text-sm font-medium text-gray-700 block">Assign Products & Work Type</label>
+    <div className="grid grid-cols-3 gap-2">
+      <select
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        value={newProduct.code}
+        onChange={e => {
+  const product = products.find(p => p.code === e.target.value)
+  let rate = ''
+  if (product && newProduct.workType) {
+    if (newProduct.workType === 'shaping') rate = product.shapingRate
+    else if (newProduct.workType === 'finishing') rate = product.finishingRate
+    else if (newProduct.workType === 'polishing') rate = product.polishingRate
+  }
+  setNewProduct({ ...newProduct, code: e.target.value, rate })
+}}
+      >
+        <option value="">Select product</option>
+        {products
+          .filter(p => !empForm.assignedProducts.find(ap => ap.code === p.code && ap.workType === newProduct.workType))
+          .map(p => (
+            <option key={p.code} value={p.code}>
+              {p.code} — {p.name} {p.size}
+            </option>
+          ))
+        }
+      </select>
+
+      <select
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        value={newProduct.workType || ''}
+        onChange={e => {
+  const workType = e.target.value
+  const product = products.find(p => p.code === newProduct.code)
+  let rate = ''
+  if (product && workType) {
+    if (workType === 'shaping') rate = product.shapingRate
+    else if (workType === 'finishing') rate = product.finishingRate
+    else if (workType === 'polishing') rate = product.polishingRate
+  }
+  setNewProduct({ ...newProduct, workType, rate })
+}}
+      >
+        <option value="">Work type</option>
+        <option value="shaping">🔨 Shaping</option>
+        <option value="finishing">✨ Finishing</option>
+        <option value="polishing">💎 Polishing</option>
+      </select>
+
+      <div className="flex gap-2">
+        <input
+          type="number"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          placeholder="₹/pc"
+          value={newProduct.rate}
+          onChange={e => setNewProduct({ ...newProduct, rate: e.target.value })}
+        />
+        <button
+          onClick={addProductToForm}
+          className="bg-orange-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-orange-600 whitespace-nowrap"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+
+    {empForm.assignedProducts.length > 0 && (
+      <div className="space-y-1">
+        {empForm.assignedProducts.map((p, i) => (
+          <div key={i} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+            <span className="text-sm text-gray-700">
+              {p.code} — {p.name}
+              <span className="ml-2 text-xs bg-orange-200 text-orange-700 px-2 py-0.5 rounded-full capitalize">
+                {p.workType}
+              </span>
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-orange-600">₹{p.rate}/pc</span>
+              <button
+                onClick={() => removeProductFromForm(p.code, p.workType)}
+                className="text-red-400 hover:text-red-600 text-lg"
+              >×</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
           </div>
 
           <div className="flex gap-3 pt-4">

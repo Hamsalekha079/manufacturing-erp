@@ -1,28 +1,290 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
   provider = "postgresql"
+  
 }
 
-model User{
-  id String @id @default(uuid())
-  name String
-  email String @unique
-  password String
-  role Role @default(STAFF)
+// ─── AUTH ────────────────────────────────────────────────
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  phone     String?
+  role      Role     @default(ADMIN)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
-enum Role{
+enum Role {
   ADMIN
   MANAGER
   STAFF
+}
+
+// ─── PRODUCTS ────────────────────────────────────────────
+model Product {
+  code          String   @id
+  name          String
+  size          String
+  category      String
+  bulkPrice     Float    @default(0)
+  retailPrice   Float    @default(0)
+  shapingRate   Float    @default(0)
+  finishingRate Float    @default(0)
+  polishingRate Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  orderItems    OrderItem[]
+  walkinItems   WalkinItem[]
+  productionLogs ProductionLog[]
+  semiFinished  SemiFinishedStock?
+  finished      FinishedStock?
+}
+model Category {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+// ─── STOCK ───────────────────────────────────────────────
+model SemiFinishedStock {
+  id        Int      @id @default(autoincrement())
+  productCode String @unique
+  product   Product  @relation(fields: [productCode], references: [code])
+  stock     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model FinishedStock {
+  id        Int      @id @default(autoincrement())
+  productCode String @unique
+  product   Product  @relation(fields: [productCode], references: [code])
+  stock     Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+// ─── SUPPLIERS ───────────────────────────────────────────
+model Supplier {
+  id          Int      @id @default(autoincrement())
+  name        String
+  phone       String?
+  paymentMode String   @default("POSTPAID")
+  createdAt   DateTime @default(now())
+
+  purchases   RawMaterialPurchase[]
+}
+
+model RawMaterialPurchase {
+  id           Int      @id @default(autoincrement())
+  supplierId   Int
+  supplier     Supplier @relation(fields: [supplierId], references: [id])
+  materialType String   @default("Copper")
+  orderedKg    Float    @default(0)
+  receivedKg   Float
+  pricePerKg   Float
+  totalAmount  Float
+  paidAmount   Float    @default(0)
+  date         DateTime @default(now())
+  createdAt    DateTime @default(now())
+}
+
+// ─── CASTING ─────────────────────────────────────────────
+model CastingCenter {
+  id        Int      @id @default(autoincrement())
+  name      String
+  phone     String?
+  createdAt DateTime @default(now())
+
+  castingEntries CastingEntry[]
+}
+
+model CastingEntry {
+  id         Int           @id @default(autoincrement())
+  centerId   Int
+  center     CastingCenter @relation(fields: [centerId], references: [id])
+  type       CastingType   @default(ROUND1)
+  sentKg     Float
+  returnedKg Float         @default(0)
+  pendingKg  Float         @default(0)
+  extraKg    Float         @default(0)
+  ratePerKg  Float
+  totalAmount Float
+  paidAmount Float         @default(0)
+  date       DateTime      @default(now())
+  createdAt  DateTime      @default(now())
+}
+
+enum CastingType {
+  ROUND1
+  ROUND2_WASTE
+}
+
+// ─── PRODUCTION ──────────────────────────────────────────
+model ProductionRun {
+  id             Int      @id @default(autoincrement())
+  productType    String
+  materialUsedKg Float
+  productsMade   Int
+  wasteKg        Float    @default(0)
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
+}
+
+// ─── EMPLOYEES ───────────────────────────────────────────
+model Employee {
+  id           Int         @id @default(autoincrement())
+  name         String
+  phone        String?
+  role         String?
+  salaryType   SalaryType  @default(DAILY)
+  dailyRate    Float       @default(0)
+  status       String      @default("active")
+  createdAt    DateTime    @default(now())
+
+  assignedProducts AssignedProduct[]
+  attendanceLogs   AttendanceLog[]
+  productionLogs   ProductionLog[]
+  salaryHistory    SalaryRecord[]
+}
+
+enum SalaryType {
+  DAILY
+  LABOUR
+}
+
+model AssignedProduct {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  productCode String
+  workType   String
+  rate       Float
+  createdAt  DateTime @default(now())
+}
+
+model AttendanceLog {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  date       DateTime
+  status     String
+  createdAt  DateTime @default(now())
+}
+
+model ProductionLog {
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  productCode String
+  product     Product  @relation(fields: [productCode], references: [code])
+  date        DateTime
+  qty         Int
+  rate        Float
+  workType    String?
+  createdAt   DateTime @default(now())
+}
+
+model SalaryRecord {
+  id         Int      @id @default(autoincrement())
+  employeeId Int
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  week       String
+  amount     Float
+  paid       Boolean  @default(false)
+  paidDate   DateTime?
+  method     String?
+  createdAt  DateTime @default(now())
+}
+
+// ─── CUSTOMERS & SALES ───────────────────────────────────
+model Customer {
+  id           Int      @id @default(autoincrement())
+  name         String
+  phone        String?
+  location     String?
+  locationType String   @default("non-local")
+  createdAt    DateTime @default(now())
+
+  orders       Order[]
+}
+
+model Order {
+  id             Int           @id @default(autoincrement())
+  customerId     Int
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  date           DateTime      @default(now())
+  dueDate        DateTime?
+  deliveryStatus String        @default("pending")
+  totalAmount    Float
+  createdAt      DateTime      @default(now())
+
+  items          OrderItem[]
+  payments       Payment[]
+}
+
+model OrderItem {
+  id          Int     @id @default(autoincrement())
+  orderId     Int
+  order       Order   @relation(fields: [orderId], references: [id])
+  productCode String
+  product     Product @relation(fields: [productCode], references: [code])
+  name        String
+  qty         Int
+  price       Float
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  orderId   Int
+  order     Order    @relation(fields: [orderId], references: [id])
+  amount    Float
+  method    String
+  date      DateTime @default(now())
+}
+
+// ─── WALK-IN SALES ───────────────────────────────────────
+model WalkinSale {
+  id        Int          @id @default(autoincrement())
+  name      String
+  phone     String?
+  method    String
+  amount    Float
+  date      DateTime     @default(now())
+  createdAt DateTime     @default(now())
+
+  items     WalkinItem[]
+}
+
+model WalkinItem {
+  id          Int        @id @default(autoincrement())
+  walkinId    Int
+  walkin      WalkinSale @relation(fields: [walkinId], references: [id])
+  productCode String
+  product     Product    @relation(fields: [productCode], references: [code])
+  name        String
+  qty         Int
+  price       Float
+}
+
+// ─── FINANCE ─────────────────────────────────────────────
+model Income {
+  id          Int      @id @default(autoincrement())
+  category    String
+  description String?
+  amount      Float
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Expense {
+  id          Int      @id @default(autoincrement())
+  category    String
+  description String?
+  amount      Float
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
 }
