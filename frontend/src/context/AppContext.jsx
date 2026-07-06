@@ -15,7 +15,7 @@ function groupStock(flatList) {
         group: category,
         code: p.code.split(' ')[0].split('-')[0],
         unit: 'pcs',
-        low: 10,
+        low: 5,
         items: []
       }
     }

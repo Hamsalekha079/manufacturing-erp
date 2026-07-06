@@ -10,12 +10,12 @@ const castingCenters = []
 
 function TabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-2 border-b border-gray-200">
+    <div className="flex gap-2 border-b border-gray-200 overflow-x-auto no-scrollbar">
       {tabs.map(tab => (
         <button
           key={tab}
           onClick={() => onChange(tab)}
-          className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
+          className={`px-3 sm:px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors whitespace-nowrap flex-shrink-0 ${
             active === tab
               ? 'border-indigo-600 text-indigo-600'
               : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -33,7 +33,7 @@ function StatusBadge({ paid, total }) {
   const isPaid = balance === 0
   const isPartial = paid > 0 && balance > 0
   return (
-    <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+    <span className={`text-xs px-2 py-1 rounded-full font-medium whitespace-nowrap ${
       isPaid ? 'bg-green-100 text-green-600'
       : isPartial ? 'bg-yellow-100 text-yellow-600'
       : 'bg-red-100 text-red-600'
@@ -102,14 +102,14 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow p-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Total Ordered</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{totalOrdered} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{totalOrdered} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Total Received</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{totalReceived} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{totalReceived} kg</p>
           {totalReceived !== totalOrdered && (
             <p className={`text-xs mt-1 ${totalReceived > totalOrdered ? 'text-blue-500' : 'text-orange-500'}`}>
               {totalReceived > totalOrdered
@@ -118,72 +118,46 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
             </p>
           )}
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Total Cost</p>
-          <p className="text-2xl font-bold text-red-500 mt-1">₹{totalCost.toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-500 mt-1">₹{totalCost.toLocaleString()}</p>
           <p className="text-xs text-gray-400 mt-1">Based on received kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Balance Due</p>
-          <p className="text-2xl font-bold text-orange-500 mt-1">₹{(totalCost - totalPaid).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold text-orange-500 mt-1">₹{(totalCost - totalPaid).toLocaleString()}</p>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h3 className="font-semibold text-gray-800">Suppliers</h3>
-        <div>
-          {/* <div style={{ position: "relative",width: "200px", display: "inline-block", marginRight: "10px" }}>
-           <input
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative w-full sm:w-auto">
+            <input
               type="text"
               placeholder="Search suppliers..."
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2"
+              className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
-            <Search
-            className="cursor-pointer bg-indigo-600"
-              size={25}
-              style={{
-                position: "absolute",
-                right: "20px",
-                top: "50%",            
-                transform: "translateY(-50%)",
-                color: "#ffffff",
-                padding: "4px",
-                borderRadius: "4px",
-              }}
-            />
-            </div> */}
-           <div className="flex justify-between items-center">
-  {/* <h3 className="font-semibold text-gray-800">Suppliers</h3> */}
-  <div className="flex items-center gap-2">
-    <div className="relative">
-      <input
-        type="text"
-        placeholder="Search suppliers..."
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-      />
-      <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
-    </div>
-    <button
-      onClick={() => setShowAddSupplier(true)}
-      className="bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-50"
-    >
-      + Add Supplier
-    </button>
-    <button
-      onClick={() => setShowModal(true)}
-      className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-    >
-      + Add Purchase
-    </button>
-  </div>
-</div>
+            <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAddSupplier(true)}
+              className="flex-1 sm:flex-none bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-50 whitespace-nowrap"
+            >
+              + Add Supplier
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 whitespace-nowrap"
+            >
+              + Add Purchase
+            </button>
+          </div>
         </div>
-        
       </div>
 
       {/* Supplier wise accordion */}
@@ -197,11 +171,11 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
           return (
             <div key={supplier.id} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 cursor-pointer hover:bg-gray-50 transition"
                 onClick={() => toggleSupplier(supplier.name)}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="w-10 h-10 flex-shrink-0 rounded-full bg-teal-100 flex items-center justify-center">
                     <span className="text-teal-600 font-bold">{supplier.name[0]}</span>
                   </div>
                   <div>
@@ -216,8 +190,8 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
                     {supplier.paymentMode}
                   </span>
                 </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
+                  <div className="text-left sm:text-right">
                     <p className="text-xs text-gray-400">Total / Paid / Balance</p>
                     <p className="text-sm font-bold">
                       ₹{supplierTotal.toLocaleString()} /
@@ -225,7 +199,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
                       <span className="text-red-500"> ₹{supplierBalance.toLocaleString()}</span>
                     </p>
                   </div>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full whitespace-nowrap">
                     {supplier.entries.length} entries
                   </span>
                   {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -233,11 +207,11 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
               </div>
 
               {isOpen && (
-                <div className="border-t border-gray-100 overflow-x-scroll">
+                <div className="border-t border-gray-100 overflow-x-auto">
                   {supplier.entries.length === 0 ? (
                     <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p>
                   ) : (
-                    <table className="w-full ]">
+                    <table className="w-full min-w-[720px]">
                       <thead className="bg-gray-50">
                         <tr className="text-left text-xs text-gray-400 uppercase">
                           <th className="px-5 py-3">Date</th>
@@ -257,10 +231,10 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
                           const diff = e.receivedKg - e.orderedKg
                           return (
                             <tr key={e.id} className="hover:bg-gray-50">
-                              <td className="px-5 py-3 text-sm text-gray-400">{e.date}</td>
-                              <td className="px-5 py-3 text-sm text-gray-600">{e.orderedKg} kg</td>
-                              <td className="px-5 py-3 text-sm text-green-600 font-medium">{e.receivedKg} kg</td>
-                              <td className="px-5 py-3 text-sm">
+                              <td className="px-5 py-3 text-sm text-gray-400 whitespace-nowrap">{e.date}</td>
+                              <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">{e.orderedKg} kg</td>
+                              <td className="px-5 py-3 text-sm text-green-600 font-medium whitespace-nowrap">{e.receivedKg} kg</td>
+                              <td className="px-5 py-3 text-sm whitespace-nowrap">
                                 {diff === 0 ? (
                                   <span className="text-gray-400">—</span>
                                 ) : diff > 0 ? (
@@ -269,10 +243,10 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
                                   <span className="text-orange-500 font-medium">{diff} kg pending</span>
                                 )}
                               </td>
-                              <td className="px-5 py-3 text-sm text-gray-600">₹{e.pricePerKg}</td>
-                              <td className="px-5 py-3 text-sm font-bold text-gray-800">₹{e.totalAmount.toLocaleString()}</td>
-                              <td className="px-5 py-3 text-sm text-green-600">₹{e.paidAmount.toLocaleString()}</td>
-                              <td className="px-5 py-3 text-sm font-bold text-red-500">
+                              <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">₹{e.pricePerKg}</td>
+                              <td className="px-5 py-3 text-sm font-bold text-gray-800 whitespace-nowrap">₹{e.totalAmount.toLocaleString()}</td>
+                              <td className="px-5 py-3 text-sm text-green-600 whitespace-nowrap">₹{e.paidAmount.toLocaleString()}</td>
+                              <td className="px-5 py-3 text-sm font-bold text-red-500 whitespace-nowrap">
                                 {e.totalAmount - e.paidAmount > 0
                                   ? `₹${(e.totalAmount - e.paidAmount).toLocaleString()}`
                                   : '-'}
@@ -288,7 +262,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
       return pendingKg > 0 ? (
         <button
           onClick={() => { setReceivingEntry(e); setReceiveKg('') }}
-          className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-600"
+          className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-600 whitespace-nowrap"
         >
           📦 Receive
         </button>
@@ -297,7 +271,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
     {e.totalAmount - e.paidAmount > 0 && (
       <button
         onClick={() => { setPayingEntry(e); setPayAmount('') }}
-        className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600"
+        className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600 whitespace-nowrap"
       >
         💰 Pay
       </button>
@@ -372,7 +346,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
         </div>
       )}
 
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={async () => {
             if (!receiveKg) return
@@ -410,7 +384,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
       {/* Modal */}
       {showModal && (
         <Modal title="Add Raw Material Purchase" onClose={() => setShowModal(false)}>
-          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
+          <div className="space-y-4 overflow-y-auto max-h-[70vh] sm:max-h-[60vh]">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Supplier</label>
               <select
@@ -433,7 +407,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
                 placeholder="e.g. Copper"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Ordered (kg)</label>
                 <input
@@ -486,7 +460,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
 
             {/* Live calculation */}
             {form.receivedKg && form.pricePerKg && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 flex justify-between">
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:justify-between gap-1">
                 <span className="text-sm text-indigo-700">
                   Total ({form.receivedKg} kg × ₹{form.pricePerKg})
                 </span>
@@ -506,7 +480,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
               />
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 onClick={handleSubmit}
                 className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
@@ -562,79 +536,12 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
           ))}
         </div>
       </div>
-      <div className="flex gap-3 pt-2">
+      <div className="flex flex-col sm:flex-row gap-3 pt-2">
         <button
           onClick={async () => {
             if (!supplierForm.name) return
             try {
              await addSupplier(supplierForm)
-              setSupplierForm({ name: '', phone: '', paymentMode: 'POSTPAID' })
-              setShowAddSupplier(false)
-            } catch (err) {
-              console.error('Failed to add supplier:', err)
-            }
-          }}
-          className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-        >
-          Add Supplier
-        </button>
-        <button
-          onClick={() => setShowAddSupplier(false)}
-          className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-  </Modal>
-)}
-
-{showAddSupplier && (
-  <Modal title="Add Supplier" onClose={() => setShowAddSupplier(false)}>
-    <div className="space-y-4">
-      <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Supplier Name</label>
-        <input
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          value={supplierForm.name}
-          onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })}
-          placeholder="e.g. Ravi Kumar"
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Phone</label>
-        <input
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-          value={supplierForm.phone}
-          onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })}
-          placeholder="9876543210"
-        />
-      </div>
-      <div>
-        <label className="text-sm font-medium text-gray-700 block mb-1">Payment Mode</label>
-        <div className="flex gap-2">
-          {['PREPAID', 'POSTPAID'].map(mode => (
-            <button
-              key={mode}
-              onClick={() => setSupplierForm({ ...supplierForm, paymentMode: mode })}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
-                supplierForm.paymentMode === mode
-                  ? 'bg-indigo-600 text-white border-indigo-600'
-                  : 'bg-white text-gray-600 border-gray-300'
-              }`}
-            >
-              {mode}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="flex gap-3 pt-2">
-        <button
-          onClick={async () => {
-            if (!supplierForm.name) return
-            try {
-              const newSupplier = await api.addSupplier(supplierForm)
-              setSuppliers(prev => [...prev, { ...newSupplier, entries: [] }])
               setSupplierForm({ name: '', phone: '', paymentMode: 'POSTPAID' })
               setShowAddSupplier(false)
             } catch (err) {
@@ -675,7 +582,7 @@ const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
           placeholder={`Max: ₹${(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}`}
         />
       </div>
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={async () => {
   if (!payAmount) return
@@ -774,54 +681,56 @@ function CastingRound1Tab() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow p-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Sent to Casting</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{totalSent} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{totalSent} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Returned</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{totalReturned} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{totalReturned} kg</p>
           {totalExtra > 0 && (
             <p className="text-xs text-blue-500 mt-1">+{totalExtra} kg extra</p>
           )}
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Pending with them</p>
-          <p className="text-2xl font-bold text-orange-500 mt-1">{totalPending} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-orange-500 mt-1">{totalPending} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Charges Due</p>
-          <p className="text-2xl font-bold text-red-500 mt-1">₹{(totalCharges - totalPaid).toLocaleString()}</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-500 mt-1">₹{(totalCharges - totalPaid).toLocaleString()}</p>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h3 className="font-semibold text-gray-800">Casting Centers</h3>
-        <div className="flex items-center gap-2">
-          <div className="relative">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+          <div className="relative w-full sm:w-auto">
             <input
               type="text"
               placeholder="Search centers..."
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
+              className="w-full sm:w-auto border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
             <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
           </div>
-          <button
-            onClick={() => setShowAddCenter(true)}
-            className="bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-50"
-          >
-            + Add Center
-          </button>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-          >
-            + Add Entry
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowAddCenter(true)}
+              className="flex-1 sm:flex-none bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-50 whitespace-nowrap"
+            >
+              + Add Center
+            </button>
+            <button
+              onClick={() => setShowModal(true)}
+              className="flex-1 sm:flex-none bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 whitespace-nowrap"
+            >
+              + Add Entry
+            </button>
+          </div>
         </div>
       </div>
 
@@ -837,11 +746,11 @@ function CastingRound1Tab() {
           return (
             <div key={center.id} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 cursor-pointer hover:bg-gray-50 transition"
                 onClick={() => toggleCenter(center.name)}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="w-10 h-10 flex-shrink-0 rounded-full bg-purple-100 flex items-center justify-center">
                     <span className="text-purple-600 font-bold">{center.name[0]}</span>
                   </div>
                   <div>
@@ -849,18 +758,18 @@ function CastingRound1Tab() {
                     <p className="text-xs text-gray-400">{center.phone}</p>
                   </div>
                   {cPending > 0 && (
-                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full whitespace-nowrap">
                       {cPending} kg pending
                     </span>
                   )}
                   {cExtra > 0 && (
-                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">
+                    <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full whitespace-nowrap">
                       +{cExtra} kg extra
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
+                  <div className="text-left sm:text-right">
                     <p className="text-xs text-gray-400">Charges / Paid / Balance</p>
                     <p className="text-sm font-bold">
                       ₹{cTotal.toLocaleString()} /
@@ -868,7 +777,7 @@ function CastingRound1Tab() {
                       <span className="text-red-500"> ₹{(cTotal - cPaid).toLocaleString()}</span>
                     </p>
                   </div>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full whitespace-nowrap">
                     {center.entries.length} entries
                   </span>
                   {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -876,11 +785,11 @@ function CastingRound1Tab() {
               </div>
 
               {isOpen && (
-                <div className="border-t border-gray-100">
+                <div className="border-t border-gray-100 overflow-x-auto">
                   {center.entries.length === 0 ? (
                     <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p>
                   ) : (
-                    <table className="w-full">
+                    <table className="w-full min-w-[760px]">
                       <thead className="bg-gray-50">
                         <tr className="text-left text-xs text-gray-400 uppercase">
                           <th className="px-4 py-3">Date</th>
@@ -900,10 +809,10 @@ function CastingRound1Tab() {
                           const diff = e.returnedKg - e.sentKg
                           return (
                             <tr key={e.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-3 text-sm text-gray-400">{e.date}</td>
-                              <td className="px-4 py-3 text-sm text-gray-600">{e.sentKg} kg</td>
-                              <td className="px-4 py-3 text-sm text-green-600 font-medium">{e.returnedKg} kg</td>
-                              <td className="px-4 py-3 text-sm">
+                              <td className="px-4 py-3 text-sm text-gray-400 whitespace-nowrap">{e.date}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">{e.sentKg} kg</td>
+                              <td className="px-4 py-3 text-sm text-green-600 font-medium whitespace-nowrap">{e.returnedKg} kg</td>
+                              <td className="px-4 py-3 text-sm whitespace-nowrap">
                                 {diff === 0 ? (
                                   <span className="text-gray-400">—</span>
                                 ) : diff > 0 ? (
@@ -912,10 +821,10 @@ function CastingRound1Tab() {
                                   <span className="text-orange-500 font-medium">{Math.abs(diff)} kg pending</span>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-sm text-gray-600">₹{e.ratePerKg}</td>
-                              <td className="px-4 py-3 text-sm font-bold text-gray-800">₹{e.totalAmount.toLocaleString()}</td>
-                              <td className="px-4 py-3 text-sm text-green-600">₹{e.paidAmount.toLocaleString()}</td>
-                              <td className="px-4 py-3 text-sm font-bold text-red-500">
+                              <td className="px-4 py-3 text-sm text-gray-600 whitespace-nowrap">₹{e.ratePerKg}</td>
+                              <td className="px-4 py-3 text-sm font-bold text-gray-800 whitespace-nowrap">₹{e.totalAmount.toLocaleString()}</td>
+                              <td className="px-4 py-3 text-sm text-green-600 whitespace-nowrap">₹{e.paidAmount.toLocaleString()}</td>
+                              <td className="px-4 py-3 text-sm font-bold text-red-500 whitespace-nowrap">
                                 {e.totalAmount - e.paidAmount > 0
                                   ? `₹${(e.totalAmount - e.paidAmount).toLocaleString()}`
                                   : '-'}
@@ -928,7 +837,7 @@ function CastingRound1Tab() {
                                   {e.pendingKg > 0 && (
                                     <button
                                       onClick={() => { setReceivingEntry(e); setReceiveKg('') }}
-                                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600 whitespace-nowrap"
                                     >
                                       📦 Receive
                                     </button>
@@ -936,7 +845,7 @@ function CastingRound1Tab() {
                                   {e.totalAmount - e.paidAmount > 0 && (
                                     <button
                                       onClick={() => { setPayingEntry(e); setPayAmount('') }}
-                                      className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                                      className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600 whitespace-nowrap"
                                     >
                                       💰 Pay
                                     </button>
@@ -978,7 +887,7 @@ function CastingRound1Tab() {
                 placeholder="9876543210"
               />
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 onClick={async () => {
                   if (!centerForm.name) return
@@ -1004,7 +913,7 @@ function CastingRound1Tab() {
       {/* Add Entry Modal */}
       {showModal && (
         <Modal title="Add Casting Entry" onClose={() => setShowModal(false)}>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-[70vh]">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Casting Center</label>
               <select
@@ -1018,7 +927,7 @@ function CastingRound1Tab() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Sent (kg)</label>
                 <input
@@ -1066,7 +975,7 @@ function CastingRound1Tab() {
               />
             </div>
             {form.sentKg && form.ratePerKg && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 flex justify-between">
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 flex flex-col sm:flex-row sm:justify-between gap-1">
                 <span className="text-sm text-indigo-700">
                   Total charges ({form.sentKg} kg × ₹{form.ratePerKg})
                 </span>
@@ -1084,7 +993,7 @@ function CastingRound1Tab() {
                 onChange={e => setForm({ ...form, date: e.target.value })}
               />
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button onClick={handleSubmit} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
                 Add Entry
               </button>
@@ -1116,7 +1025,7 @@ function CastingRound1Tab() {
                 placeholder={`Max: ₹${(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}`}
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={async () => {
                   if (!payAmount) return
@@ -1190,7 +1099,7 @@ function CastingRound1Tab() {
                 </div>
               </div>
             )}
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={async () => {
                   if (!receiveKg) return
@@ -1276,31 +1185,31 @@ function WasteCastingTab() {
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow p-5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Total Waste</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{totalWaste} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{totalWaste} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Sent to Casting</p>
-          <p className="text-2xl font-bold text-indigo-600 mt-1">{totalSent} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-indigo-600 mt-1">{totalSent} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Returned</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{totalReturned} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{totalReturned} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Pending with them</p>
-          <p className="text-2xl font-bold text-orange-500 mt-1">{totalPending} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-orange-500 mt-1">{totalPending} kg</p>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
         <h3 className="font-semibold text-gray-800">Waste Casting Centers</h3>
         <button
           onClick={() => setShowModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 w-full sm:w-auto"
         >
           + Add Entry
         </button>
@@ -1317,11 +1226,11 @@ function WasteCastingTab() {
           return (
             <div key={center.id} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
               <div
-                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 cursor-pointer hover:bg-gray-50 transition"
                 onClick={() => toggleCenter(center.name)}
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <div className="w-10 h-10 flex-shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
                     <span className="text-amber-600 font-bold">{center.name[0]}</span>
                   </div>
                   <div>
@@ -1329,13 +1238,13 @@ function WasteCastingTab() {
                     <p className="text-xs text-gray-400">{center.phone}</p>
                   </div>
                   {cPending > 0 && (
-                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full whitespace-nowrap">
                       {cPending} kg pending
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-6">
-                  <div className="text-right">
+                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
+                  <div className="text-left sm:text-right">
                     <p className="text-xs text-gray-400">Charges / Paid / Balance</p>
                     <p className="text-sm font-bold">
                       ₹{cTotal.toLocaleString()} /
@@ -1343,7 +1252,7 @@ function WasteCastingTab() {
                       <span className="text-red-500"> ₹{(cTotal - cPaid).toLocaleString()}</span>
                     </p>
                   </div>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full whitespace-nowrap">
                     {center.entries.length} entries
                   </span>
                   {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -1351,11 +1260,11 @@ function WasteCastingTab() {
               </div>
 
               {isOpen && (
-                <div className="border-t border-gray-100">
+                <div className="border-t border-gray-100 overflow-x-auto">
                   {center.entries.length === 0 ? (
                     <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p>
                   ) : (
-                    <table className="w-full">
+                    <table className="w-full min-w-[680px]">
                       <thead className="bg-gray-50">
                         <tr className="text-left text-xs text-gray-400 uppercase">
                           <th className="px-5 py-3">Date</th>
@@ -1371,13 +1280,13 @@ function WasteCastingTab() {
                       <tbody className="divide-y divide-gray-50">
                         {center.entries.map(e => (
                           <tr key={e.id} className="hover:bg-gray-50">
-                            <td className="px-5 py-3 text-sm text-gray-400">{e.date}</td>
-                            <td className="px-5 py-3 text-sm text-gray-600">{e.wasteKg} kg</td>
-                            <td className="px-5 py-3 text-sm text-green-600">{e.returnedKg} kg</td>
-                            <td className="px-5 py-3 text-sm font-bold text-orange-500">{e.pendingKg} kg</td>
-                            <td className="px-5 py-3 text-sm text-gray-600">₹{e.ratePerKg}</td>
-                            <td className="px-5 py-3 text-sm font-bold text-gray-800">₹{e.totalAmount.toLocaleString()}</td>
-                            <td className="px-5 py-3 text-sm text-green-600">₹{e.paidAmount.toLocaleString()}</td>
+                            <td className="px-5 py-3 text-sm text-gray-400 whitespace-nowrap">{e.date}</td>
+                            <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">{e.wasteKg} kg</td>
+                            <td className="px-5 py-3 text-sm text-green-600 whitespace-nowrap">{e.returnedKg} kg</td>
+                            <td className="px-5 py-3 text-sm font-bold text-orange-500 whitespace-nowrap">{e.pendingKg} kg</td>
+                            <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">₹{e.ratePerKg}</td>
+                            <td className="px-5 py-3 text-sm font-bold text-gray-800 whitespace-nowrap">₹{e.totalAmount.toLocaleString()}</td>
+                            <td className="px-5 py-3 text-sm text-green-600 whitespace-nowrap">₹{e.paidAmount.toLocaleString()}</td>
                             <td className="px-5 py-3"><StatusBadge paid={e.paidAmount} total={e.totalAmount} /></td>
                           </tr>
                         ))}
@@ -1394,7 +1303,7 @@ function WasteCastingTab() {
       {/* Modal */}
       {showModal && (
         <Modal title="Add Waste Casting Entry" onClose={() => setShowModal(false)}>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-[70vh]">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Casting Center</label>
               <select
@@ -1408,7 +1317,7 @@ function WasteCastingTab() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Waste Sent (kg)</label>
                 <input
@@ -1470,7 +1379,7 @@ function WasteCastingTab() {
               />
             </div>
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 onClick={handleSubmit}
                 className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
@@ -1551,28 +1460,28 @@ const { categories, products, reloadStock } = useApp()
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow p-5">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Total Material Used</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{totalMaterial} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{totalMaterial} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Total Products Made</p>
-          <p className="text-2xl font-bold text-indigo-600 mt-1">{totalProducts} pcs</p>
+          <p className="text-xl sm:text-2xl font-bold text-indigo-600 mt-1">{totalProducts} pcs</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
           <p className="text-sm text-gray-500">Total Waste</p>
-          <p className="text-2xl font-bold text-red-500 mt-1">{totalWaste} kg</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-500 mt-1">{totalWaste} kg</p>
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-xl shadow overflow-hidden">
-        <div className="p-5 border-b flex justify-between items-center">
+        <div className="p-4 sm:p-5 border-b flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
           <h3 className="font-semibold text-gray-800">Production Runs</h3>
           <button
             onClick={() => setShowModal(true)}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 w-full sm:w-auto"
           >
             + New Run
           </button>
@@ -1580,7 +1489,8 @@ const { categories, products, reloadStock } = useApp()
         {runs.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">No production runs yet</p>
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[640px]">
             <thead className="bg-gray-50">
               <tr className="text-left text-xs text-gray-400 uppercase">
                 <th className="px-5 py-3">Date</th>
@@ -1598,11 +1508,11 @@ const { categories, products, reloadStock } = useApp()
                   : 0
                 return (
                   <tr key={p.id} className="hover:bg-gray-50">
-                    <td className="px-5 py-3 text-sm text-gray-400">{p.date}</td>
-                    <td className="px-5 py-3 text-sm font-medium text-gray-800">{p.productType}</td>
-                    <td className="px-5 py-3 text-sm text-gray-600">{p.materialUsedKg} kg</td>
-                    <td className="px-5 py-3 text-sm font-bold text-indigo-600">{p.productsMade} pcs</td>
-                    <td className="px-5 py-3 text-sm text-red-500">{p.wasteKg} kg</td>
+                    <td className="px-5 py-3 text-sm text-gray-400 whitespace-nowrap">{p.date}</td>
+                    <td className="px-5 py-3 text-sm font-medium text-gray-800 whitespace-nowrap">{p.productType}</td>
+                    <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">{p.materialUsedKg} kg</td>
+                    <td className="px-5 py-3 text-sm font-bold text-indigo-600 whitespace-nowrap">{p.productsMade} pcs</td>
+                    <td className="px-5 py-3 text-sm text-red-500 whitespace-nowrap">{p.wasteKg} kg</td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
                         <div className="w-20 bg-gray-200 rounded-full h-2">
@@ -1619,13 +1529,14 @@ const { categories, products, reloadStock } = useApp()
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
       {/* Modal */}
       {showModal && (
         <Modal title="Add Production Run" onClose={() => setShowModal(false)}>
-          <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+          <div className="space-y-4 max-h-[70vh] sm:max-h-96 overflow-y-auto pr-1">
 
             {/* Step 1: Category */}
             <div>
@@ -1693,7 +1604,7 @@ const { categories, products, reloadStock } = useApp()
             {/* Qty + Material + Waste */}
             {form.productCode && (
               <>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="text-sm font-medium text-gray-700 block mb-1">Qty Made</label>
                     <input
@@ -1761,7 +1672,7 @@ const { categories, products, reloadStock } = useApp()
               </>
             )}
 
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
                 onClick={handleSubmit}
                 className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
@@ -1790,7 +1701,7 @@ function Materials() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-800">Materials</h2>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Materials</h2>
         <p className="text-gray-500 text-sm mt-1">Track raw material, casting and production</p>
       </div>
 

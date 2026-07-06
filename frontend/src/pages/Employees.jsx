@@ -79,19 +79,19 @@ function EmployeeCard({ emp }) {
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
       {/* Header */}
       <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition"
+        className="flex flex-row sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer hover:bg-gray-50 transition"
         onClick={() => setOpen(!open)}
       >
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 shrink-0 rounded-full bg-indigo-100 flex items-center justify-center">
             <span className="text-indigo-600 font-bold">{emp.name[0]}</span>
           </div>
-          <div>
-            <p className="font-semibold text-gray-800">{emp.name}</p>
-            <p className="text-xs text-gray-400">{emp.role} · {emp.phone}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-gray-800 truncate">{emp.name}</p>
+            <p className="text-xs text-gray-400 truncate">{emp.role} · {emp.phone}</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap sm:gap-4 pl-13 sm:pl-0">
           <span className={`text-xs px-2 py-1 rounded-full font-medium ${
             emp.salaryType === 'DAILY'
               ? 'bg-blue-100 text-blue-600'
@@ -110,14 +110,14 @@ function EmployeeCard({ emp }) {
 
       {/* Expanded */}
       {open && (
-        <div className="border-t border-gray-100 p-4 space-y-4">
+        <div className="border-t border-gray-100 p-3 sm:p-4 space-y-4">
 
           {/* Action buttons */}
           <div className="flex gap-2 flex-wrap">
             {emp.salaryType === 'DAILY' && (
               <button
                 onClick={() => setShowAttModal(true)}
-                className="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg text-sm hover:bg-blue-100"
+                className="bg-blue-50 text-blue-600 border border-blue-200 px-3 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-blue-100"
               >
                 📅 Log Attendance
               </button>
@@ -125,21 +125,21 @@ function EmployeeCard({ emp }) {
             {emp.salaryType === 'LABOUR' && (
               <button
                 onClick={() => setShowProdModal(true)}
-                className="bg-orange-50 text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg text-sm hover:bg-orange-100"
+                className="bg-orange-50 text-orange-600 border border-orange-200 px-3 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-orange-100"
               >
                 🔨 Log Products
               </button>
             )}
             <button
               onClick={() => setShowGenModal(true)}
-              className="bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-lg text-sm hover:bg-indigo-100"
+              className="bg-indigo-50 text-indigo-600 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-indigo-100"
             >
               📊 Generate Salary
             </button>
             {unpaidSalaries.length > 0 && (
               <button
                 onClick={() => setShowPayModal(true)}
-                className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-600"
+                className="bg-green-500 text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm hover:bg-green-600"
               >
                 💰 Pay Salary
               </button>
@@ -147,12 +147,12 @@ function EmployeeCard({ emp }) {
           </div>
 
           {/* Section tabs */}
-          <div className="flex gap-2 border-b border-gray-100">
+          <div className="flex gap-2 border-b border-gray-100 overflow-x-auto">
             {['logs', 'salary', 'products'].map(s => (
               <button
                 key={s}
                 onClick={() => setActiveSection(s)}
-                className={`px-3 py-1.5 text-xs font-medium capitalize border-b-2 transition ${
+                className={`px-3 py-1.5 text-xs font-medium capitalize border-b-2 transition whitespace-nowrap ${
                   activeSection === s
                     ? 'border-indigo-600 text-indigo-600'
                     : 'border-transparent text-gray-400'
@@ -170,12 +170,12 @@ function EmployeeCard({ emp }) {
           {activeSection === 'logs' && (
   <div className="space-y-3">
     {/* Filter tabs */}
-    <div className="flex gap-2">
+    <div className="flex gap-2 overflow-x-auto">
       {['thisWeek', 'thisMonth', 'all'].map(f => (
         <button
           key={f}
           onClick={() => { setLogFilter(f); setLogPage(1) }}
-          className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+          className={`px-3 py-1 rounded-lg text-xs font-medium transition whitespace-nowrap ${
             logFilter === f
               ? 'bg-indigo-600 text-white'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -213,7 +213,7 @@ function EmployeeCard({ emp }) {
         return (
           <div className="space-y-2">
             {/* Summary row */}
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3 flex-wrap">
               <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">✅ {presentCount} present</span>
               <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">🌓 {halfCount} half</span>
               <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">❌ {absentCount} absent</span>
@@ -223,7 +223,7 @@ function EmployeeCard({ emp }) {
               <p className="text-sm text-gray-400">No attendance logged</p>
             ) : (
               <>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {paginated.map((l, i) => (
                     <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs ${
                       l.status === 'present' ? 'bg-green-100 text-green-700'
@@ -238,7 +238,7 @@ function EmployeeCard({ emp }) {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
                     <p className="text-xs text-gray-400">{filtered.length} records · Page {logPage}/{totalPages}</p>
                     <div className="flex gap-1">
                       <button
@@ -283,7 +283,7 @@ function EmployeeCard({ emp }) {
         return (
           <div className="space-y-2">
             {/* Summary */}
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3 flex-wrap">
               <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
                 {filtered.length} entries
               </span>
@@ -296,17 +296,17 @@ function EmployeeCard({ emp }) {
               <p className="text-sm text-gray-400">No production logged</p>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {paginated.map((l, i) => (
-                    <div key={i} className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between">
-                      <div>
+                    <div key={i} className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                      <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-mono bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">{l.code}</span>
                           <span className="text-xs text-gray-400">{l.date}</span>
                         </div>
                         <p className="text-xs text-gray-600 mt-0.5 truncate max-w-[140px]">{l.name}</p>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <p className="text-xs text-gray-500">×{l.qty} @ ₹{l.rate}</p>
                         <p className="text-sm font-bold text-indigo-600">₹{(l.qty * l.rate).toLocaleString()}</p>
                       </div>
@@ -316,7 +316,7 @@ function EmployeeCard({ emp }) {
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-1">
                     <p className="text-xs text-gray-400">{filtered.length} records · Page {logPage}/{totalPages}</p>
                     <div className="flex gap-1">
                       <button
@@ -347,7 +347,7 @@ function EmployeeCard({ emp }) {
               {emp.salaryHistory.length === 0
                 ? <p className="text-sm text-gray-400">No salary generated yet</p>
                 : emp.salaryHistory.map((s, i) => (
-                  <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${
+                  <div key={i} className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg border ${
                     s.paid ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
                   }`}>
                     <div>
@@ -366,7 +366,7 @@ function EmployeeCard({ emp }) {
                 ))
               }
               {/* Summary */}
-              <div className="flex justify-between bg-gray-50 rounded-lg px-4 py-3 mt-2">
+              <div className="flex flex-col sm:flex-row sm:justify-between gap-1 bg-gray-50 rounded-lg px-4 py-3 mt-2">
                 <span className="text-sm text-gray-600">Total Earned / Paid / Pending</span>
                 <span className="text-sm font-bold">
                   ₹{totalEarned.toLocaleString()} /
@@ -385,7 +385,7 @@ function EmployeeCard({ emp }) {
                 : emp.assignedProducts.length === 0
                   ? <p className="text-sm text-gray-400">No products assigned yet</p>
                   : (
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {emp.assignedProducts.map((p, i) => (
                         <div key={i} className="bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 flex justify-between">
                           <div>
@@ -423,7 +423,7 @@ function EmployeeCard({ emp }) {
                   <button
                     key={s}
                     onClick={() => setAttForm({ ...attForm, status: s })}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium capitalize border transition ${
+                    className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-medium capitalize border transition ${
                       attForm.status === s
                         ? s === 'present' ? 'bg-green-500 text-white border-green-500'
                           : s === 'half' ? 'bg-yellow-400 text-white border-yellow-400'
@@ -452,7 +452,6 @@ function EmployeeCard({ emp }) {
         </Modal>
       )}
 
-      {/* ── LOG PRODUCTION MODAL ── */}
       {/* ── LOG PRODUCTION MODAL ── */}
       {showProdModal && (
         <Modal title={`Log Products — ${emp.name}`} onClose={() => setShowProdModal(false)}>
@@ -484,7 +483,7 @@ function EmployeeCard({ emp }) {
 
               <div className="space-y-2">
                 {(prodForm.entries || [{ code: '', qty: '' }]).map((entry, i) => (
-                  <div key={i} className="flex gap-2 items-center">
+                  <div key={i} className="flex flex-col sm:flex-row gap-2 sm:items-center">
                    <select
                       className="flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       value={entry.code}
@@ -503,27 +502,29 @@ function EmployeeCard({ emp }) {
                         </option>
                       ))}
                     </select>
-                    <input
-                      type="number"
-                      className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      placeholder="Qty"
-                      value={entry.qty}
-                      onChange={e => {
-                        const updated = (prodForm.entries || [{ code: '', qty: '' }]).map((en, idx) =>
-                          idx === i ? { ...en, qty: e.target.value } : en
-                        )
-                        setProdForm({ ...prodForm, entries: updated })
-                      }}
-                    />
-                    {(prodForm.entries || []).length > 1 && (
-                      <button
-                        onClick={() => setProdForm({
-                          ...prodForm,
-                          entries: prodForm.entries.filter((_, idx) => idx !== i)
-                        })}
-                        className="text-red-400 hover:text-red-600 text-lg px-1"
-                      >×</button>
-                    )}
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="number"
+                        className="w-full sm:w-24 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="Qty"
+                        value={entry.qty}
+                        onChange={e => {
+                          const updated = (prodForm.entries || [{ code: '', qty: '' }]).map((en, idx) =>
+                            idx === i ? { ...en, qty: e.target.value } : en
+                          )
+                          setProdForm({ ...prodForm, entries: updated })
+                        }}
+                      />
+                      {(prodForm.entries || []).length > 1 && (
+                        <button
+                          onClick={() => setProdForm({
+                            ...prodForm,
+                            entries: prodForm.entries.filter((_, idx) => idx !== i)
+                          })}
+                          className="text-red-400 hover:text-red-600 text-lg px-1 shrink-0"
+                        >×</button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -536,9 +537,9 @@ function EmployeeCard({ emp }) {
                   const product = emp.assignedProducts.find(p => p.code === e.code)
                   if (!product) return null
                   return (
-                    <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-600">{e.code} × {e.qty} @ ₹{product.rate}</span>
-                      <span className="font-medium text-orange-700">₹{(parseInt(e.qty) * product.rate).toLocaleString()}</span>
+                    <div key={i} className="flex justify-between text-sm gap-2">
+                      <span className="text-gray-600 truncate">{e.code} × {e.qty} @ ₹{product.rate}</span>
+                      <span className="font-medium text-orange-700 shrink-0">₹{(parseInt(e.qty) * product.rate).toLocaleString()}</span>
                     </div>
                   )
                 })}
@@ -597,7 +598,7 @@ function EmployeeCard({ emp }) {
                 placeholder="e.g. May W3 (19-25)"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">From</label>
                 <input
@@ -643,7 +644,7 @@ function EmployeeCard({ emp }) {
                   <div
                     key={s.id}
                     onClick={() => setSelectedSalaryId(s.id)}
-                    className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition ${
+                    className={`flex items-center justify-between gap-2 p-3 rounded-lg border cursor-pointer transition ${
                       selectedSalaryId === s.id
                         ? 'bg-indigo-50 border-indigo-400'
                         : 'bg-gray-50 border-gray-200 hover:border-indigo-300'
@@ -748,31 +749,31 @@ function Employees() {
   }, 0)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-bold text-gray-800">Employees</h2>
-          <p className="text-gray-500 text-sm mt-1">Manage staff, attendance and salary</p>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Employees</h2>
+          <p className="text-gray-500 text-xs sm:text-sm mt-1">Manage staff, attendance and salary</p>
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 w-full sm:w-auto"
         >
           + Add Employee
         </button>
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow p-5">
-          <p className="text-sm text-gray-500">Total Employees</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{employees.length}</p>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
+          <p className="text-xs sm:text-sm text-gray-500">Total Employees</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{employees.length}</p>
           <p className="text-xs text-gray-400 mt-1">{dailyEmployees.length} daily · {labourEmployees.length} labour</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
-          <p className="text-sm text-gray-500">Salary Pending</p>
-          <p className="text-2xl font-bold text-red-500 mt-1">₹{totalPending.toLocaleString()}</p>
+        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
+          <p className="text-xs sm:text-sm text-gray-500">Salary Pending</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-500 mt-1">₹{totalPending.toLocaleString()}</p>
         </div>
         {/* <div className="bg-white rounded-xl shadow p-5">
             <p className="text-sm text-gray-500">This Week Attendance</p>
@@ -799,12 +800,12 @@ function Employees() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-gray-200">
+      <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
         {['daily', 'labour'].map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
+            className={`px-4 py-2 text-xs sm:text-sm font-medium capitalize border-b-2 transition-colors whitespace-nowrap ${
               activeTab === tab
                 ? 'border-indigo-600 text-indigo-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -826,7 +827,7 @@ function Employees() {
       {showAddModal && (
         <Modal title="Add New Employee" onClose={() => setShowAddModal(false)}>
           <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Name</label>
                 <input
@@ -864,7 +865,7 @@ function Employees() {
                   <button
                     key={type}
                     onClick={() => setEmpForm({ ...empForm, salaryType: type })}
-                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                    className={`flex-1 py-2 rounded-lg text-xs sm:text-sm font-medium border transition ${
                       empForm.salaryType === type
                         ? type === 'DAILY'
                           ? 'bg-blue-600 text-white border-blue-600'
@@ -899,7 +900,7 @@ function Employees() {
             {empForm.salaryType === 'LABOUR' && (
   <div className="space-y-3">
     <label className="text-sm font-medium text-gray-700 block">Assign Products & Work Type</label>
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
       <select
         className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
         value={newProduct.code}
@@ -966,7 +967,7 @@ function Employees() {
     {empForm.assignedProducts.length > 0 && (
       <div className="space-y-1">
         {empForm.assignedProducts.map((p, i) => (
-          <div key={i} className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+          <div key={i} className="flex flex-row sm:flex-row sm:items-center justify-between gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
             <span className="text-sm text-gray-700">
               {p.code} — {p.name}
               <span className="ml-2 text-xs bg-orange-200 text-orange-700 px-2 py-0.5 rounded-full capitalize">
