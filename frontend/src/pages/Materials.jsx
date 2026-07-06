@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState,useEffect  } from 'react'
 import Modal from '../components/Modal'
 import { ChevronDown, ChevronUp, Icon , Search } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { api } from '../api'
 
 const suppliers = []
 const castingCenters = []
@@ -44,9 +45,16 @@ function StatusBadge({ paid, total }) {
 
 // ─── TAB 1: RAW MATERIAL ────────────────────────────────
 function RawMaterialTab() {
-  const { suppliers } = useApp()
+  const [receivingEntry, setReceivingEntry] = useState(null)
+const [receiveKg, setReceiveKg] = useState('')
+  const { suppliers, setSuppliers, addSupplier, addSupplierPurchase } = useApp()
+  const [payingEntry, setPayingEntry] = useState(null)
+const [payAmount, setPayAmount] = useState('')
+  const [showAddSupplier, setShowAddSupplier] = useState(false)
+const [supplierForm, setSupplierForm] = useState({ name: '', phone: '', paymentMode: 'POSTPAID' })
+// const { suppliers } = useApp()
   const [search, setSearch] = useState('')
-  const [entries, setEntries] = useState([])
+  
   const [showModal, setShowModal] = useState(false)
   const [openSuppliers, setOpenSuppliers] = useState({})
   const [form, setForm] = useState({
@@ -54,43 +62,42 @@ function RawMaterialTab() {
     orderedKg: '', receivedKg: '', pricePerKg: '', date: ''
   })
 
-  function handleSubmit() {
-    if (!form.supplierName || !form.receivedKg || !form.pricePerKg) return
-    const receivedKg = parseFloat(form.receivedKg)
-    const pricePerKg = parseFloat(form.pricePerKg)
-    const newEntry = {
-      id: Date.now(),
-      supplierName: form.supplierName,
-      materialType: form.materialType,
-      orderedKg: parseFloat(form.orderedKg || form.receivedKg),
-      receivedKg,
-      pricePerKg,
-      totalAmount: receivedKg * pricePerKg,
-      paidAmount: 0,
-      date: form.date || new Date().toISOString().split('T')[0]
-    }
-    setEntries([newEntry, ...entries])
-    setOpenSuppliers(prev => ({ ...prev, [form.supplierName]: true }))
-    setForm({ supplierName: '', materialType: 'Copper', orderedKg: '', receivedKg: '', pricePerKg: '', date: '' })
-    setShowModal(false)
-  }
+ async function handleSubmit() {
+  if (!form.supplierName || !form.receivedKg || !form.pricePerKg) return
+  const supplier = suppliers.find(s => s.name === form.supplierName)
+  if (!supplier) return
+  const receivedKg = parseFloat(form.receivedKg)
+  const pricePerKg = parseFloat(form.pricePerKg)
+  await addSupplierPurchase({
+    supplierId: supplier.id,
+    materialType: form.materialType,
+    orderedKg: parseFloat(form.orderedKg || form.receivedKg),
+    receivedKg,
+    pricePerKg,
+    totalAmount: receivedKg * pricePerKg,
+    date: form.date || new Date().toISOString().split('T')[0]
+  })
+  setOpenSuppliers(prev => ({ ...prev, [form.supplierName]: true }))
+  setForm({ supplierName: '', materialType: 'Copper', orderedKg: '', receivedKg: '', pricePerKg: '', date: '' })
+  setShowModal(false)
+}
 
   function toggleSupplier(name) {
     setOpenSuppliers(prev => ({ ...prev, [name]: !prev[name] }))
   }
 
-  const grouped = suppliers
+const grouped = suppliers
   .filter(s => s.name.toLowerCase().includes(search.toLowerCase()))
   .map(s => ({
     ...s,
-    entries: entries.filter(e => e.supplierName === s.name)
+    entries: s.entries || []
   }))
-  
 
-  const totalOrdered = entries.reduce((s, e) => s + e.orderedKg, 0)
-  const totalReceived = entries.reduce((s, e) => s + e.receivedKg, 0)
-  const totalCost = entries.reduce((s, e) => s + e.totalAmount, 0)
-  const totalPaid = entries.reduce((s, e) => s + e.paidAmount, 0)
+  const allEntries = suppliers.flatMap(s => s.entries || [])
+const totalOrdered = allEntries.reduce((s, e) => s + e.orderedKg, 0)
+const totalReceived = allEntries.reduce((s, e) => s + e.receivedKg, 0)
+const totalCost = allEntries.reduce((s, e) => s + e.totalAmount, 0)
+const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
 
   return (
     <div className="space-y-4">
@@ -126,7 +133,7 @@ function RawMaterialTab() {
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-gray-800">Suppliers</h3>
         <div>
-          <div style={{ position: "relative",width: "200px", display: "inline-block", marginRight: "10px" }}>
+          {/* <div style={{ position: "relative",width: "200px", display: "inline-block", marginRight: "10px" }}>
            <input
               type="text"
               placeholder="Search suppliers..."
@@ -147,13 +154,34 @@ function RawMaterialTab() {
                 borderRadius: "4px",
               }}
             />
-            </div>
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-            >
-              + Add Purchase
-            </button>
+            </div> */}
+           <div className="flex justify-between items-center">
+  {/* <h3 className="font-semibold text-gray-800">Suppliers</h3> */}
+  <div className="flex items-center gap-2">
+    <div className="relative">
+      <input
+        type="text"
+        placeholder="Search suppliers..."
+        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
+      <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+    </div>
+    <button
+      onClick={() => setShowAddSupplier(true)}
+      className="bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-50"
+    >
+      + Add Supplier
+    </button>
+    <button
+      onClick={() => setShowModal(true)}
+      className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+    >
+      + Add Purchase
+    </button>
+  </div>
+</div>
         </div>
         
       </div>
@@ -205,11 +233,11 @@ function RawMaterialTab() {
               </div>
 
               {isOpen && (
-                <div className="border-t border-gray-100">
+                <div className="border-t border-gray-100 overflow-x-scroll">
                   {supplier.entries.length === 0 ? (
                     <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p>
                   ) : (
-                    <table className="w-full">
+                    <table className="w-full ]">
                       <thead className="bg-gray-50">
                         <tr className="text-left text-xs text-gray-400 uppercase">
                           <th className="px-5 py-3">Date</th>
@@ -221,9 +249,10 @@ function RawMaterialTab() {
                           <th className="px-5 py-3">Paid</th>
                           <th className="px-5 py-3">Balance</th>
                           <th className="px-5 py-3">Status</th>
+                          <th className="px-5 py-3">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody className="divide-y divide-gray-100 ">
                         {supplier.entries.map(e => {
                           const diff = e.receivedKg - e.orderedKg
                           return (
@@ -251,6 +280,30 @@ function RawMaterialTab() {
                               <td className="px-5 py-3">
                                 <StatusBadge paid={e.paidAmount} total={e.totalAmount} />
                               </td>
+                    <td className="px-5 py-3">
+  <div className="flex gap-1">
+    {(() => {
+      const diff = e.receivedKg - e.orderedKg
+      const pendingKg = diff < 0 ? Math.abs(diff) : 0
+      return pendingKg > 0 ? (
+        <button
+          onClick={() => { setReceivingEntry(e); setReceiveKg('') }}
+          className="bg-blue-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-blue-600"
+        >
+          📦 Receive
+        </button>
+      ) : null
+    })()}
+    {e.totalAmount - e.paidAmount > 0 && (
+      <button
+        onClick={() => { setPayingEntry(e); setPayAmount('') }}
+        className="bg-green-500 text-white px-3 py-1 rounded-lg text-xs hover:bg-green-600"
+      >
+        💰 Pay
+      </button>
+    )}
+  </div>
+</td>
                             </tr>
                           )
                         })}
@@ -263,11 +316,101 @@ function RawMaterialTab() {
           )
         })}
       </div>
+      {receivingEntry && (
+  <Modal title="Receive Pending Material" onClose={() => setReceivingEntry(null)}>
+    <div className="space-y-4">
+      <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 space-y-1">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Originally Ordered</span>
+          <span className="font-bold">{receivingEntry.orderedKg} kg</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Already Received</span>
+          <span className="font-bold text-green-600">{receivingEntry.receivedKg} kg</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Pending</span>
+          <span className="font-bold text-orange-500">
+            {Math.abs(receivingEntry.receivedKg - receivingEntry.orderedKg)} kg
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">
+          How many kg received now?
+        </label>
+        <input
+          type="number"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={receiveKg}
+          onChange={e => setReceiveKg(e.target.value)}
+          placeholder={`Max: ${Math.abs(receivingEntry.receivedKg - receivingEntry.orderedKg)} kg`}
+        />
+      </div>
+
+      {receiveKg && (
+        <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">New Total Received</span>
+            <span className="font-bold text-indigo-600">
+              {receivingEntry.receivedKg + parseFloat(receiveKg)} kg
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Remaining Pending</span>
+            <span className="font-bold text-orange-500">
+              {Math.max(0, receivingEntry.orderedKg - receivingEntry.receivedKg - parseFloat(receiveKg))} kg
+            </span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Additional Cost</span>
+            <span className="font-bold text-red-500">
+              ₹{(parseFloat(receiveKg) * receivingEntry.pricePerKg).toLocaleString()}
+            </span>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          onClick={async () => {
+            if (!receiveKg) return
+            try {
+              const updated = await api.receivePendingKg(receivingEntry.id, parseFloat(receiveKg))
+              setSuppliers(prev => prev.map(s => ({
+                ...s,
+                entries: (s.entries || []).map(e =>
+                  e.id === receivingEntry.id
+                    ? { ...e, receivedKg: updated.receivedKg, totalAmount: updated.totalAmount }
+                    : e
+                )
+              })))
+              setReceivingEntry(null)
+              setReceiveKg('')
+            } catch (err) {
+              console.error('Failed to receive kg:', err)
+            }
+          }}
+          className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+        >
+          Confirm Receipt
+        </button>
+        <button
+          onClick={() => setReceivingEntry(null)}
+          className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </Modal>
+)}
 
       {/* Modal */}
       {showModal && (
         <Modal title="Add Raw Material Purchase" onClose={() => setShowModal(false)}>
-          <div className="space-y-4">
+          <div className="space-y-4 overflow-y-auto max-h-[60vh]">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Supplier</label>
               <select
@@ -380,41 +523,226 @@ function RawMaterialTab() {
           </div>
         </Modal>
       )}
+      {showAddSupplier && (
+  <Modal title="Add Supplier" onClose={() => setShowAddSupplier(false)}>
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Supplier Name</label>
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={supplierForm.name}
+          onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })}
+          placeholder="e.g. Ravi Kumar"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Phone</label>
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={supplierForm.phone}
+          onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })}
+          placeholder="9876543210"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Payment Mode</label>
+        <div className="flex gap-2">
+          {['PREPAID', 'POSTPAID'].map(mode => (
+            <button
+              key={mode}
+              onClick={() => setSupplierForm({ ...supplierForm, paymentMode: mode })}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                supplierForm.paymentMode === mode
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-600 border-gray-300'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={async () => {
+            if (!supplierForm.name) return
+            try {
+             await addSupplier(supplierForm)
+              setSupplierForm({ name: '', phone: '', paymentMode: 'POSTPAID' })
+              setShowAddSupplier(false)
+            } catch (err) {
+              console.error('Failed to add supplier:', err)
+            }
+          }}
+          className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+        >
+          Add Supplier
+        </button>
+        <button
+          onClick={() => setShowAddSupplier(false)}
+          className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </Modal>
+)}
+
+{showAddSupplier && (
+  <Modal title="Add Supplier" onClose={() => setShowAddSupplier(false)}>
+    <div className="space-y-4">
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Supplier Name</label>
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={supplierForm.name}
+          onChange={e => setSupplierForm({ ...supplierForm, name: e.target.value })}
+          placeholder="e.g. Ravi Kumar"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Phone</label>
+        <input
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={supplierForm.phone}
+          onChange={e => setSupplierForm({ ...supplierForm, phone: e.target.value })}
+          placeholder="9876543210"
+        />
+      </div>
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Payment Mode</label>
+        <div className="flex gap-2">
+          {['PREPAID', 'POSTPAID'].map(mode => (
+            <button
+              key={mode}
+              onClick={() => setSupplierForm({ ...supplierForm, paymentMode: mode })}
+              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                supplierForm.paymentMode === mode
+                  ? 'bg-indigo-600 text-white border-indigo-600'
+                  : 'bg-white text-gray-600 border-gray-300'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="flex gap-3 pt-2">
+        <button
+          onClick={async () => {
+            if (!supplierForm.name) return
+            try {
+              const newSupplier = await api.addSupplier(supplierForm)
+              setSuppliers(prev => [...prev, { ...newSupplier, entries: [] }])
+              setSupplierForm({ name: '', phone: '', paymentMode: 'POSTPAID' })
+              setShowAddSupplier(false)
+            } catch (err) {
+              console.error('Failed to add supplier:', err)
+            }
+          }}
+          className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+        >
+          Add Supplier
+        </button>
+        <button
+          onClick={() => setShowAddSupplier(false)}
+          className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </Modal>
+)}
+
+{payingEntry && (
+  <Modal title="Record Payment" onClose={() => setPayingEntry(null)}>
+    <div className="space-y-4">
+      <div className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between">
+        <span className="text-sm text-gray-600">Balance due</span>
+        <span className="font-bold text-red-600">
+          ₹{(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}
+        </span>
+      </div>
+      <div>
+        <label className="text-sm font-medium text-gray-700 block mb-1">Amount (₹)</label>
+        <input
+          type="number"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          value={payAmount}
+          onChange={e => setPayAmount(e.target.value)}
+          placeholder={`Max: ₹${(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}`}
+        />
+      </div>
+      <div className="flex gap-3">
+        <button
+          onClick={async () => {
+  if (!payAmount) return
+  try {
+    const updated = await api.recordSupplierPayment(payingEntry.id, parseFloat(payAmount))
+    // Update suppliers context
+    setSuppliers(prev => prev.map(s => ({
+      ...s,
+      entries: (s.entries || []).map(e =>
+        e.id === payingEntry.id ? { ...e, paidAmount: updated.paidAmount } : e
+      )
+    })))
+    setPayingEntry(null)
+    setPayAmount('')
+  } catch (err) {
+    console.error('Failed to record payment:', err)
+  }
+}}
+          className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700"
+        >
+          Record Payment
+        </button>
+        <button
+          onClick={() => setPayingEntry(null)}
+          className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm"
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </Modal>
+)}
     </div>
   )
 }
 
 // ─── TAB 2: CASTING ROUND 1 ─────────────────────────────
 function CastingRound1Tab() {
-  const { castingCenters } = useApp()
-  const [search, setSearch] = useState('')
-  const [entries, setEntries] = useState([])
+  const { castingCenters, addCastingEntry, addCastingCenter, setCastingCenters } = useApp()
   const [showModal, setShowModal] = useState(false)
+  const [showAddCenter, setShowAddCenter] = useState(false)
   const [openCenters, setOpenCenters] = useState({})
+  const [search, setSearch] = useState('')
+  const [payingEntry, setPayingEntry] = useState(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [receivingEntry, setReceivingEntry] = useState(null)
+  const [receiveKg, setReceiveKg] = useState('')
+  const [centerForm, setCenterForm] = useState({ name: '', phone: '' })
   const [form, setForm] = useState({
     centerName: '', sentKg: '', returnedKg: '', ratePerKg: '', date: ''
   })
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.centerName || !form.sentKg || !form.ratePerKg) return
+    const center = castingCenters.find(c => c.name === form.centerName)
+    if (!center) return
     const sentKg = parseFloat(form.sentKg)
     const returnedKg = parseFloat(form.returnedKg || 0)
     const ratePerKg = parseFloat(form.ratePerKg)
-    const pendingKg = Math.max(0, sentKg - returnedKg)
-    const extraKg = Math.max(0, returnedKg - sentKg)
-    const newEntry = {
-      id: Date.now(),
-      centerName: form.centerName,
+    await addCastingEntry({
+      centerId: center.id,
+      type: 'ROUND1',
       sentKg,
       returnedKg,
-      pendingKg,
-      extraKg,
       ratePerKg,
-      totalAmount: sentKg * ratePerKg,
-      paidAmount: 0,
       date: form.date || new Date().toISOString().split('T')[0]
-    }
-    setEntries([newEntry, ...entries])
+    })
     setOpenCenters(prev => ({ ...prev, [form.centerName]: true }))
     setForm({ centerName: '', sentKg: '', returnedKg: '', ratePerKg: '', date: '' })
     setShowModal(false)
@@ -424,19 +752,24 @@ function CastingRound1Tab() {
     setOpenCenters(prev => ({ ...prev, [name]: !prev[name] }))
   }
 
-  const grouped = castingCenters
-  .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
-  .map(c => ({
+  const filtered = castingCenters.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const grouped = filtered.map(c => ({
     ...c,
-    entries: entries.filter(e => e.centerName === c.name)
+    entries: (c.entries || []).filter(e => e.type === 'ROUND1')
   }))
 
-  const totalSent = entries.reduce((s, e) => s + e.sentKg, 0)
-  const totalReturned = entries.reduce((s, e) => s + e.returnedKg, 0)
-  const totalPending = entries.reduce((s, e) => s + e.pendingKg, 0)
-  const totalExtra = entries.reduce((s, e) => s + (e.extraKg || 0), 0)
-  const totalCharges = entries.reduce((s, e) => s + e.totalAmount, 0)
-  const totalPaid = entries.reduce((s, e) => s + e.paidAmount, 0)
+  const allEntries = castingCenters.flatMap(c =>
+    (c.entries || []).filter(e => e.type === 'ROUND1')
+  )
+  const totalSent = allEntries.reduce((s, e) => s + e.sentKg, 0)
+  const totalReturned = allEntries.reduce((s, e) => s + e.returnedKg, 0)
+  const totalPending = allEntries.reduce((s, e) => s + e.pendingKg, 0)
+  const totalExtra = allEntries.reduce((s, e) => s + (e.extraKg || 0), 0)
+  const totalCharges = allEntries.reduce((s, e) => s + e.totalAmount, 0)
+  const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
 
   return (
     <div className="space-y-4">
@@ -450,7 +783,7 @@ function CastingRound1Tab() {
           <p className="text-sm text-gray-500">Returned</p>
           <p className="text-2xl font-bold text-green-600 mt-1">{totalReturned} kg</p>
           {totalExtra > 0 && (
-            <p className="text-xs text-blue-500 mt-1">+{totalExtra} kg extra returned</p>
+            <p className="text-xs text-blue-500 mt-1">+{totalExtra} kg extra</p>
           )}
         </div>
         <div className="bg-white rounded-xl shadow p-5">
@@ -467,23 +800,29 @@ function CastingRound1Tab() {
       <div className="flex justify-between items-center">
         <h3 className="font-semibold text-gray-800">Casting Centers</h3>
         <div className="flex items-center gap-2">
-    <div className="relative">
-      <input
-        type="text"
-        placeholder="Search centers..."
-        className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-      />
-      <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
-    </div>
-    <button
-      onClick={() => setShowModal(true)}
-      className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
-    >
-      + Add Entry
-    </button>
-  </div>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search centers..."
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
+          <button
+            onClick={() => setShowAddCenter(true)}
+            className="bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-50"
+          >
+            + Add Center
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+          >
+            + Add Entry
+          </button>
+        </div>
       </div>
 
       {/* Center wise accordion */}
@@ -553,6 +892,7 @@ function CastingRound1Tab() {
                           <th className="px-4 py-3">Paid</th>
                           <th className="px-4 py-3">Balance</th>
                           <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -583,6 +923,26 @@ function CastingRound1Tab() {
                               <td className="px-4 py-3">
                                 <StatusBadge paid={e.paidAmount} total={e.totalAmount} />
                               </td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1">
+                                  {e.pendingKg > 0 && (
+                                    <button
+                                      onClick={() => { setReceivingEntry(e); setReceiveKg('') }}
+                                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                                    >
+                                      📦 Receive
+                                    </button>
+                                  )}
+                                  {e.totalAmount - e.paidAmount > 0 && (
+                                    <button
+                                      onClick={() => { setPayingEntry(e); setPayAmount('') }}
+                                      className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                                    >
+                                      💰 Pay
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
                             </tr>
                           )
                         })}
@@ -596,7 +956,52 @@ function CastingRound1Tab() {
         })}
       </div>
 
-      {/* Modal */}
+      {/* Add Center Modal */}
+      {showAddCenter && (
+        <Modal title="Add Casting Center" onClose={() => setShowAddCenter(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Center Name</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={centerForm.name}
+                onChange={e => setCenterForm({ ...centerForm, name: e.target.value })}
+                placeholder="e.g. Bhaskar"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Phone</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={centerForm.phone}
+                onChange={e => setCenterForm({ ...centerForm, phone: e.target.value })}
+                placeholder="9876543210"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={async () => {
+                  if (!centerForm.name) return
+                  await addCastingCenter(centerForm)
+                  setCenterForm({ name: '', phone: '' })
+                  setShowAddCenter(false)
+                }}
+                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+              >
+                Add Center
+              </button>
+              <button
+                onClick={() => setShowAddCenter(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Add Entry Modal */}
       {showModal && (
         <Modal title="Add Casting Entry" onClose={() => setShowModal(false)}>
           <div className="space-y-4">
@@ -635,8 +1040,6 @@ function CastingRound1Tab() {
                 />
               </div>
             </div>
-
-            {/* Diff indicator */}
             {form.sentKg && form.returnedKg && (
               <div className={`rounded-lg px-4 py-2 text-sm ${
                 parseFloat(form.returnedKg) > parseFloat(form.sentKg)
@@ -648,11 +1051,10 @@ function CastingRound1Tab() {
                 {parseFloat(form.returnedKg) > parseFloat(form.sentKg)
                   ? `✓ Returned ${parseFloat(form.returnedKg) - parseFloat(form.sentKg)} kg extra`
                   : parseFloat(form.returnedKg) < parseFloat(form.sentKg)
-                  ? `⚠ ${parseFloat(form.sentKg) - parseFloat(form.returnedKg)} kg still pending with ${form.centerName || 'center'}`
+                  ? `⚠ ${parseFloat(form.sentKg) - parseFloat(form.returnedKg)} kg still pending`
                   : '✓ Exact amount returned'}
               </div>
             )}
-
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Rate per kg (₹)</label>
               <input
@@ -663,7 +1065,6 @@ function CastingRound1Tab() {
                 placeholder="0"
               />
             </div>
-
             {form.sentKg && form.ratePerKg && (
               <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 flex justify-between">
                 <span className="text-sm text-indigo-700">
@@ -674,7 +1075,6 @@ function CastingRound1Tab() {
                 </span>
               </div>
             )}
-
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Date</label>
               <input
@@ -684,18 +1084,137 @@ function CastingRound1Tab() {
                 onChange={e => setForm({ ...form, date: e.target.value })}
               />
             </div>
-
             <div className="flex gap-3 pt-2">
-              <button
-                onClick={handleSubmit}
-                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-              >
+              <button onClick={handleSubmit} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
                 Add Entry
               </button>
+              <button onClick={() => setShowModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Pay Modal */}
+      {payingEntry && (
+        <Modal title="Record Payment" onClose={() => setPayingEntry(null)}>
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between">
+              <span className="text-sm text-gray-600">Balance due</span>
+              <span className="font-bold text-red-600">
+                ₹{(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}
+              </span>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Amount (₹)</label>
+              <input
+                type="number"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={payAmount}
+                onChange={e => setPayAmount(e.target.value)}
+                placeholder={`Max: ₹${(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}`}
+              />
+            </div>
+            <div className="flex gap-3">
               <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
+                onClick={async () => {
+                  if (!payAmount) return
+                  try {
+                    const updated = await api.recordCastingPayment(payingEntry.id, parseFloat(payAmount))
+                    setCastingCenters(prev => prev.map(c => ({
+                      ...c,
+                      entries: (c.entries || []).map(e =>
+                        e.id === payingEntry.id ? { ...e, paidAmount: updated.paidAmount } : e
+                      )
+                    })))
+                    setPayingEntry(null)
+                    setPayAmount('')
+                  } catch (err) {
+                    console.error('Failed to record payment:', err)
+                  }
+                }}
+                className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700"
               >
+                Record Payment
+              </button>
+              <button onClick={() => setPayingEntry(null)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Receive Pending Modal */}
+      {receivingEntry && (
+        <Modal title="Receive Pending Material" onClose={() => setReceivingEntry(null)}>
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Sent</span>
+                <span className="font-bold">{receivingEntry.sentKg} kg</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Already Returned</span>
+                <span className="font-bold text-green-600">{receivingEntry.returnedKg} kg</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Pending</span>
+                <span className="font-bold text-orange-500">{receivingEntry.pendingKg} kg</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">How many kg returned now?</label>
+              <input
+                type="number"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={receiveKg}
+                onChange={e => setReceiveKg(e.target.value)}
+                placeholder={`Max: ${receivingEntry.pendingKg} kg`}
+              />
+            </div>
+            {receiveKg && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">New Total Returned</span>
+                  <span className="font-bold text-indigo-600">
+                    {receivingEntry.returnedKg + parseFloat(receiveKg)} kg
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Remaining Pending</span>
+                  <span className="font-bold text-orange-500">
+                    {Math.max(0, receivingEntry.pendingKg - parseFloat(receiveKg))} kg
+                  </span>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  if (!receiveKg) return
+                  try {
+                    const updated = await api.receivePendingCasting(receivingEntry.id, parseFloat(receiveKg))
+                    setCastingCenters(prev => prev.map(c => ({
+                      ...c,
+                      entries: (c.entries || []).map(e =>
+                        e.id === receivingEntry.id
+                          ? { ...e, returnedKg: updated.returnedKg, pendingKg: updated.pendingKg, extraKg: updated.extraKg }
+                          : e
+                      )
+                    })))
+                    setReceivingEntry(null)
+                    setReceiveKg('')
+                  } catch (err) {
+                    console.error('Failed to receive kg:', err)
+                  }
+                }}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+              >
+                Confirm Receipt
+              </button>
+              <button onClick={() => setReceivingEntry(null)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm">
                 Cancel
               </button>
             </div>
@@ -973,32 +1492,58 @@ function WasteCastingTab() {
 }
 // ─── TAB 4: PRODUCTION ──────────────────────────────────
 function ProductionTab() {
+  
+const { categories, products, reloadStock } = useApp()
+  // const { categories, products } = useApp()
   const [runs, setRuns] = useState([])
   const [showModal, setShowModal] = useState(false)
   const [form, setForm] = useState({
-    productType: '', materialUsedKg: '', productsMade: '', wasteKg: '', date: ''
+    category: '', productCode: '', productsMade: '',
+    stockType: 'semi', materialUsedKg: '', wasteKg: '', date: ''
   })
 
-  function handleSubmit() {
-    if (!form.productType || !form.materialUsedKg || !form.productsMade) return
-    const newRun = {
-      id: Date.now(),
-      date: form.date || new Date().toISOString().split('T')[0],
-      materialUsedKg: parseFloat(form.materialUsedKg),
-      productType: form.productType,
-      productsMade: parseInt(form.productsMade),
+  async function handleSubmit() {
+  if (!form.productCode || !form.productsMade) return
+  try {
+    const qty = parseInt(form.productsMade)
+    // Add to stock via API
+    await api.adjustStock({
+      type: form.stockType,
+      productCode: form.productCode,
+      adjustType: 'add',
+      qty
+    })
+    await reloadStock() // reload stock from backend
+    // Add production run record
+    const newRun = await api.addProduction({
+      productType: form.category,
+      materialUsedKg: parseFloat(form.materialUsedKg || 0),
+      productsMade: qty,
       wasteKg: parseFloat(form.wasteKg || 0),
-    }
-    setRuns([newRun, ...runs])
-    setForm({ productType: '', materialUsedKg: '', productsMade: '', wasteKg: '', date: '' })
+      date: form.date || new Date().toISOString().split('T')[0]
+    })
+    setRuns(prev => [{ ...newRun, date: newRun.date.split('T')[0] }, ...prev])
+
+    // Reload stock from backend to reflect changes
+    const stockData = await api.getStock()
+    setSemiFinished(groupStock(stockData.semi))
+    setFinished(groupStock(stockData.finished))
+
+    setForm({ category: '', productCode: '', productsMade: '', stockType: 'semi', materialUsedKg: '', wasteKg: '', date: '' })
     setShowModal(false)
+  } catch (err) {
+    console.error('Failed to add production run:', err)
   }
+}
 
-  const productGroups = [
-    'Kalash - Standard', 'Kalash - Light Weight', 'Kalash - Asta Lakshmi',
-    'Panchapatra', 'Glass', 'Plate', 'Spoon', 'Kubera Kuncham'
-  ]
+  // Load production runs from backend
+  useEffect(() => {
+    api.getProduction().then(data => {
+      setRuns(data.map(r => ({ ...r, date: r.date.split('T')[0] })))
+    }).catch(err => console.error(err))
+  }, [])
 
+  const categoryProducts = products.filter(p => p.category === form.category)
   const totalMaterial = runs.reduce((s, p) => s + p.materialUsedKg, 0)
   const totalProducts = runs.reduce((s, p) => s + p.productsMade, 0)
   const totalWaste = runs.reduce((s, p) => s + p.wasteKg, 0)
@@ -1032,126 +1577,188 @@ function ProductionTab() {
             + New Run
           </button>
         </div>
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="text-left text-xs text-gray-400 uppercase">
-              <th className="px-5 py-3">Date</th>
-              <th className="px-5 py-3">Product Type</th>
-              <th className="px-5 py-3">Material Used</th>
-              <th className="px-5 py-3">Products Made</th>
-              <th className="px-5 py-3">Waste</th>
-              <th className="px-5 py-3">Efficiency</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {runs.map(p => {
-              const efficiency = (((p.materialUsedKg - p.wasteKg) / p.materialUsedKg) * 100).toFixed(1)
-              return (
-                <tr key={p.id} className="hover:bg-gray-50">
-                  <td className="px-5 py-3 text-sm text-gray-400">{p.date}</td>
-                  <td className="px-5 py-3 text-sm font-medium text-gray-800">{p.productType}</td>
-                  <td className="px-5 py-3 text-sm text-gray-600">{p.materialUsedKg} kg</td>
-                  <td className="px-5 py-3 text-sm font-bold text-indigo-600">{p.productsMade} pcs</td>
-                  <td className="px-5 py-3 text-sm text-red-500">{p.wasteKg} kg</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-20 bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-green-500 h-2 rounded-full"
-                          style={{ width: `${efficiency}%` }}
-                        />
+        {runs.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No production runs yet</p>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr className="text-left text-xs text-gray-400 uppercase">
+                <th className="px-5 py-3">Date</th>
+                <th className="px-5 py-3">Product Type</th>
+                <th className="px-5 py-3">Material Used</th>
+                <th className="px-5 py-3">Products Made</th>
+                <th className="px-5 py-3">Waste</th>
+                <th className="px-5 py-3">Efficiency</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {runs.map(p => {
+                const efficiency = p.materialUsedKg > 0
+                  ? (((p.materialUsedKg - p.wasteKg) / p.materialUsedKg) * 100).toFixed(1)
+                  : 0
+                return (
+                  <tr key={p.id} className="hover:bg-gray-50">
+                    <td className="px-5 py-3 text-sm text-gray-400">{p.date}</td>
+                    <td className="px-5 py-3 text-sm font-medium text-gray-800">{p.productType}</td>
+                    <td className="px-5 py-3 text-sm text-gray-600">{p.materialUsedKg} kg</td>
+                    <td className="px-5 py-3 text-sm font-bold text-indigo-600">{p.productsMade} pcs</td>
+                    <td className="px-5 py-3 text-sm text-red-500">{p.wasteKg} kg</td>
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-20 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-green-500 h-2 rounded-full"
+                            style={{ width: `${efficiency}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-gray-600">{efficiency}%</span>
                       </div>
-                      <span className="text-xs text-gray-600">{efficiency}%</span>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Modal */}
       {showModal && (
         <Modal title="Add Production Run" onClose={() => setShowModal(false)}>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-96 overflow-y-auto pr-1">
+
+            {/* Step 1: Category */}
             <div>
-              <label className="text-sm font-medium text-gray-700 block mb-1">Product Type</label>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Category</label>
               <select
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                value={form.productType}
-                onChange={e => setForm({ ...form, productType: e.target.value })}
+                value={form.category}
+                onChange={e => setForm({ ...form, category: e.target.value, productCode: '' })}
               >
-                <option value="">Select product type</option>
-                {productGroups.map(g => (
-                  <option key={g} value={g}>{g}</option>
+                <option value="">Select category</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
                 ))}
               </select>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Step 2: Product Code */}
+            {form.category && (
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Material Used (kg)</label>
-                <input
-                  type="number"
+                <label className="text-sm font-medium text-gray-700 block mb-1">Product Code</label>
+                <select
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={form.materialUsedKg}
-                  onChange={e => setForm({ ...form, materialUsedKg: e.target.value })}
-                  placeholder="0"
-                />
+                  value={form.productCode}
+                  onChange={e => setForm({ ...form, productCode: e.target.value })}
+                >
+                  <option value="">Select product</option>
+                  {categoryProducts.map(p => (
+                    <option key={p.code} value={p.code}>
+                      {p.code} — Size {p.size}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Products Made</label>
-                <input
-                  type="number"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={form.productsMade}
-                  onChange={e => setForm({ ...form, productsMade: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-            </div>
+            )}
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Step 3: Stock Type */}
+            {form.productCode && (
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Waste (kg)</label>
-                <input
-                  type="number"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={form.wasteKg}
-                  onChange={e => setForm({ ...form, wasteKg: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1">Date</label>
-                <input
-                  type="date"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={form.date}
-                  onChange={e => setForm({ ...form, date: e.target.value })}
-                />
-              </div>
-            </div>
-
-            {/* Live calculation */}
-            {form.materialUsedKg && form.productsMade && (
-              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-sm text-indigo-700">Material per product</span>
-                  <span className="font-bold text-indigo-700">
-                    {(parseFloat(form.materialUsedKg) / parseInt(form.productsMade)).toFixed(2)} kg/pc
-                  </span>
+                <label className="text-sm font-medium text-gray-700 block mb-1">Add to Stock As</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setForm({ ...form, stockType: 'semi' })}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                      form.stockType === 'semi'
+                        ? 'bg-orange-500 text-white border-orange-500'
+                        : 'bg-white text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    🔨 Semi-Finished
+                  </button>
+                  <button
+                    onClick={() => setForm({ ...form, stockType: 'finished' })}
+                    className={`flex-1 py-2 rounded-lg text-sm font-medium border transition ${
+                      form.stockType === 'finished'
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-white text-gray-600 border-gray-300'
+                    }`}
+                  >
+                    ✅ Finished
+                  </button>
                 </div>
-                {form.wasteKg && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-green-700">Efficiency</span>
-                    <span className="font-bold text-green-700">
-                      {(((parseFloat(form.materialUsedKg) - parseFloat(form.wasteKg)) / parseFloat(form.materialUsedKg)) * 100).toFixed(1)}%
-                    </span>
+              </div>
+            )}
+
+            {/* Qty + Material + Waste */}
+            {form.productCode && (
+              <>
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Qty Made</label>
+                    <input
+                      type="number"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={form.productsMade}
+                      onChange={e => setForm({ ...form, productsMade: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Material Used (kg)</label>
+                    <input
+                      type="number"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={form.materialUsedKg}
+                      onChange={e => setForm({ ...form, materialUsedKg: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 block mb-1">Waste (kg)</label>
+                    <input
+                      type="number"
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      value={form.wasteKg}
+                      onChange={e => setForm({ ...form, wasteKg: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium text-gray-700 block mb-1">Date</label>
+                  <input
+                    type="date"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={form.date}
+                    onChange={e => setForm({ ...form, date: e.target.value })}
+                  />
+                </div>
+
+                {/* Preview */}
+                {form.productsMade && (
+                  <div className={`rounded-lg px-4 py-3 space-y-1 border ${
+                    form.stockType === 'semi'
+                      ? 'bg-orange-50 border-orange-200'
+                      : 'bg-green-50 border-green-200'
+                  }`}>
+                    <p className={`text-sm font-medium ${
+                      form.stockType === 'semi' ? 'text-orange-700' : 'text-green-700'
+                    }`}>
+                      {form.stockType === 'semi' ? '🔨 Semi-Finished' : '✅ Finished'} Stock
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      +{form.productsMade} pcs of <strong>{form.productCode}</strong> will be added
+                    </p>
+                    {form.materialUsedKg && form.productsMade && (
+                      <p className="text-xs text-gray-500">
+                        {(parseFloat(form.materialUsedKg) / parseInt(form.productsMade)).toFixed(2)} kg per piece
+                      </p>
+                    )}
                   </div>
                 )}
-              </div>
+              </>
             )}
 
             <div className="flex gap-3 pt-2">
@@ -1174,7 +1781,6 @@ function ProductionTab() {
     </div>
   )
 }
-
 // ─── MAIN COMPONENT ─────────────────────────────────────
 function Materials() {
   const [activeTab, setActiveTab] = useState('raw material')

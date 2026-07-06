@@ -69,7 +69,17 @@ deleteProduct: (code) => request('DELETE', `/products/${code}`),
   getSuppliers: () => request('GET', '/materials/suppliers'),
   addPurchase: (data) => request('POST', '/materials/purchases', data),
   getCasting: () => request('GET', '/materials/casting'),
+  addCastingCenter: (data) => request('POST', '/materials/casting-centers', data),
   addCasting: (data) => request('POST', '/materials/casting', data),
+  recordCastingPayment: (id, amount) =>
+  request('POST', `/materials/casting/${id}/payment`, { amount }),
+  receivePendingCasting: (id, additionalKg) =>
+  request('PATCH', `/materials/casting/${id}/receive`, { additionalKg }),
   getProduction: () => request('GET', '/materials/production'),
   addProduction: (data) => request('POST', '/materials/production', data),
+  addSupplier: (data) => request('POST', '/materials/suppliers', data),
+  recordSupplierPayment: (purchaseId, amount) =>
+  request('POST', `/materials/purchases/${purchaseId}/payment`, { amount }),
+  receivePendingKg: (purchaseId, additionalKg) =>
+  request('PATCH', `/materials/purchases/${purchaseId}/receive`, { additionalKg }),
 }

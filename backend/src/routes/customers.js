@@ -66,7 +66,21 @@ router.patch('/:customerId/orders/:orderId/deliver', auth, async (req, res) => {
       where: { id: parseInt(req.params.orderId) },
       include: { items: true }
     })
+
     if (order.deliveryStatus === 'pending') {
+      // Check stock first
+      for (const item of order.items) {
+        const stock = await prisma.finishedStock.findUnique({
+          where: { productCode: item.productCode }
+        })
+        if (!stock || stock.stock < item.qty) {
+          return res.status(400).json({
+            error: `Insufficient stock for ${item.productCode}. Available: ${stock?.stock || 0}, Required: ${item.qty}`
+          })
+        }
+      }
+
+      // Deduct stock
       for (const item of order.items) {
         await prisma.finishedStock.update({
           where: { productCode: item.productCode },
@@ -74,6 +88,7 @@ router.patch('/:customerId/orders/:orderId/deliver', auth, async (req, res) => {
         })
       }
     }
+
     const updated = await prisma.order.update({
       where: { id: parseInt(req.params.orderId) },
       data: { deliveryStatus: 'delivered' }

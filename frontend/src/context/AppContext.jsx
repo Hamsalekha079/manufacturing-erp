@@ -55,7 +55,7 @@ useEffect(() => {
 async function loadAllData() {
   console.log('🔄 Loading data from backend...')
   try {
-    const [prods, stockData, emps, custs, walkin, incomeData, expensesData, suppliersData, castingData, catsData] = await Promise.all([
+    const [prods, stockData, emps, custs, walkin, incomeData, expensesData, suppliersData, castingData, catsData,suppliers, castingCenters,] = await Promise.all([
   api.getProducts(),
   api.getStock(),
   api.getEmployees(),
@@ -90,6 +90,15 @@ setSuppliers(suppliersData.map(s => ({
   ...s,
   entries: s.purchases || []
 })))
+async function addSupplier(supplierData) {
+  try {
+    const newSupplier = await api.addSupplier(supplierData)
+    setSuppliers(prev => [...prev, { ...newSupplier, entries: [] }])
+    return newSupplier
+  } catch (err) {
+    console.error('Failed to add supplier:', err)
+  }
+}
 setCastingCenters(castingData.map(c => ({
   ...c,
   entries: c.castingEntries || []
@@ -98,14 +107,26 @@ setCategories(catsData)
     // Employees — map API format to frontend format
     setEmployees(emps.map(e => ({
       ...e,
+      assignedProducts: e.assignedProducts.map(ap => ({
+        ...ap,
+        code: ap.productCode,
+        name: ap.productCode, // will update below
+        rate: ap.rate,
+        workType: ap.workType
+      })),
       attendanceLogs: e.attendanceLogs.map(l => ({
         ...l,
         date: l.date.split('T')[0]
       })),
-      productionLogs: e.productionLogs.map(l => ({
-        ...l,
-        date: l.date.split('T')[0]
-      })),
+      productionLogs: e.productionLogs.map(l => {
+        const product = prods.find(p => p.code === l.productCode)
+        return {
+          ...l,
+          date: l.date.split('T')[0],
+          code: l.productCode,
+          name: product ? `${product.name} ${product.size}` : l.productCode,
+        }
+      }),
       salaryHistory: e.salaryHistory.map(s => ({
         ...s,
         paidDate: s.paidDate ? s.paidDate.split('T')[0] : null
@@ -164,7 +185,11 @@ async function updateProductPrice(code, field, value) {
   }
 }
 
-
+async function reloadStock() {
+  const stockData = await api.getStock()
+  setSemiFinished(groupStock(stockData.semi))
+  setFinished(groupStock(stockData.finished))
+}
 async function login(username, password) {
   try {
     const data = await api.login(username, password)
@@ -512,24 +537,74 @@ async function addExpense(entry) {
     console.error('Failed to add expense:', err)
   }
 }
+async function addSupplier(supplierData) {
+  try {
+    const newSupplier = await api.addSupplier(supplierData)
+    setSuppliers(prev => [...prev, { ...newSupplier, entries: [] }])
+    return newSupplier
+  } catch (err) {
+    console.error('Failed to add supplier:', err)
+  }
+}
+async function addSupplierPurchase(purchaseData) {
+  try {
+    await api.addPurchase(purchaseData)
+    // Reload suppliers from DB to get real ids
+    const suppliersData = await api.getSuppliers()
+    setSuppliers(suppliersData.map(s => ({
+      ...s,
+      entries: (s.purchases || []).map(p => ({
+        ...p,
+        date: p.date.split('T')[0]
+      }))
+    })))
+  } catch (err) {
+    console.error('Failed to add purchase:', err)
+  }
+}
+async function addCastingEntry(entryData) {
+  try {
+    const newEntry = await api.addCasting(entryData)
+    setCastingCenters(prev => prev.map(c =>
+      c.id !== entryData.centerId ? c : {
+        ...c,
+        entries: [{ ...newEntry, date: newEntry.date.split('T')[0] }, ...c.entries]
+      }
+    ))
+  } catch (err) {
+    console.error('Failed to add casting entry:', err)
+  }
+}
+async function addCastingCenter(centerData) {
+  try {
+    const newCenter = await api.addCastingCenter(centerData)
+    setCastingCenters(prev => [...prev, { ...newCenter, entries: [] }])
+    return newCenter
+  } catch (err) {
+    console.error('Failed to add casting center:', err)
+  }
+}
   return (
     <AppContext.Provider value={{
        auth, login, logout, resetPassword,
-  products, updateProductPrice, addProduct,walkinSales, addWalkinSale,deleteProduct,
-  suppliers, setCastingCenters, castingCenters, setSuppliers,categories, addCategory, deleteCategory,
-
-      // stock
-      semiFinished, finished,
-      getFinishedStock, checkStockWarnings,
-      markAsFinished, adjustStock,
-      // employees
-      employees, addEmployee, logAttendance,
-      logProduction, generateWeeklySalary, paySalary,
-      // sales
-      customers, addCustomer, addOrder,
-      markDelivered, recordPayment,
-      // finance
-      income, expenses, addIncome, addExpense,
+    products, updateProductPrice, addProduct, deleteProduct, walkinSales, addWalkinSale,
+    categories, addCategory, deleteCategory,
+    // stock
+    semiFinished, finished,
+    getFinishedStock, checkStockWarnings,
+    markAsFinished, adjustStock,reloadStock,
+    // employees
+    employees, addEmployee, logAttendance,
+    logProduction, generateWeeklySalary, paySalary,
+    // sales
+    customers, addCustomer, addOrder,
+    markDelivered, recordPayment,
+    // finance
+    income, expenses, addIncome, addExpense,
+    // materials
+    
+    castingCenters, addCastingEntry, addCastingCenter, setCastingCenters,
+    suppliers, addSupplier, addSupplierPurchase, setSuppliers,
     }}>
       {children}
     </AppContext.Provider >

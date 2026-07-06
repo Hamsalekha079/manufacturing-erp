@@ -62,11 +62,15 @@ function OrderCard({ order, customerId }) {
     pending_delivery: '🚚 Pending Delivery',
   }
 
-  function handleMarkDelivered() {
-    const warnings = checkStockWarnings(order.items)
-    setStockWarnings(warnings)
-    markDelivered(customerId, order.id)
-  }
+ function handleMarkDelivered() {
+  const warnings = checkStockWarnings(order.items)
+  setStockWarnings(warnings)
+  
+  // Block if any errors
+  if (warnings.some(w => w.type === 'error')) return
+  
+  markDelivered(customerId, order.id)
+}
 
   function handleRecordPayment() {
     if (!payForm.amount) return
@@ -117,13 +121,13 @@ function OrderCard({ order, customerId }) {
           {/* Action buttons */}
           <div className="flex gap-2 flex-wrap">
             {order.deliveryStatus === 'pending' && (
-              <button
-                onClick={handleMarkDelivered}
-                className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-700"
-              >
-                🚚 Mark as Delivered
-              </button>
-            )}
+  <button
+    onClick={handleMarkDelivered}
+    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-700"
+  >
+    🚚 Mark as Delivered
+  </button>
+)}
             {order.deliveryStatus === 'delivered' && balance > 0 && (
               <button
                 onClick={() => setShowPayModal(true)}
@@ -339,11 +343,20 @@ function selectProduct(index, productCode) {
     setOrderForm({ ...orderForm, items: orderForm.items.filter((_, i) => i !== index) })
   }
 
-  function handleSubmitOrder() {
+ function handleSubmitOrder() {
   const validItems = orderForm.items.filter(i => i.code && i.qty && i.price)
   if (validItems.length === 0) return
+  
+  // Check stock warnings before creating order
+  const warnings = checkStockWarnings(validItems)
+  setStockWarnings(warnings)
+  
+  // Block if any errors
+  if (warnings.some(w => w.type === 'error')) return
+  
   addOrder(customer.id, { ...orderForm, items: validItems })
   setOrderForm({ date: '', dueDate: '', method: 'Cash', items: [{ code: '', name: '', qty: 1, price: 0 }] })
+  setStockWarnings([])
   setShowOrderModal(false)
 }
 
@@ -456,14 +469,10 @@ function selectProduct(index, productCode) {
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
             value={selectedCategory}
            onChange={e => {
-  const qty = parseInt(e.target.value) || 0
   const updated = orderForm.items.map((it, idx) =>
-    idx === i ? { ...it, qty } : it
+    idx === i ? { ...it, code: '', name: '', price: 0, qty: it.qty, _category: e.target.value } : it
   )
   setOrderForm({ ...orderForm, items: updated })
-  // Live stock check
-  const warnings = checkStockWarnings(updated.filter(it => it.code && it.qty))
-  setStockWarnings(warnings)
 }}
           >
             <option value="">Select category</option>
@@ -566,12 +575,16 @@ function selectProduct(index, productCode) {
           </div>
 
           <div className="flex gap-3 pt-4">
-            <button
-              onClick={handleSubmitOrder}
-              className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-            >
-              Create Order
-            </button>
+           <button
+  onClick={handleSubmitOrder}
+  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${
+    stockWarnings.some(w => w.type === 'error')
+      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+  }`}
+>
+  {stockWarnings.some(w => w.type === 'error') ? '⚠ Fix stock issues first' : 'Create Order'}
+</button>
             <button
               onClick={() => setShowOrderModal(false)}
               className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"

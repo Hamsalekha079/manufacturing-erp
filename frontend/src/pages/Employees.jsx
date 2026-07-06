@@ -18,6 +18,9 @@ function EmployeeCard({ emp }) {
   const [showPayModal, setShowPayModal] = useState(false)
   const [selectedSalaryId, setSelectedSalaryId] = useState(null)
   const [payMethod, setPayMethod] = useState('Cash')
+  const [logPage, setLogPage] = useState(1)
+  const [logFilter, setLogFilter] = useState('thisWeek')
+  const LOGS_PER_PAGE = 10
 
   const [attForm, setAttForm] = useState({ date: '', status: 'present' })
   const [prodForm, setProdForm] = useState({ 
@@ -165,43 +168,178 @@ function EmployeeCard({ emp }) {
 
           {/* Logs section */}
           {activeSection === 'logs' && (
-            <div>
-              {emp.salaryType === 'DAILY' ? (
-                recentAttendance.length === 0
-                  ? <p className="text-sm text-gray-400">No attendance logged yet</p>
-                  : (
-                    <div className="grid grid-cols-3 gap-2">
-                      {recentAttendance.map((l, i) => (
-                        <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg ${dayStyle[l.status]}`}>
-                          <span className="text-xs font-medium">{l.date}</span>
-                          <span className="text-xs font-bold capitalize">{l.status}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )
-              ) : (
-                recentProduction.length === 0
-                  ? <p className="text-sm text-gray-400">No production logged yet</p>
-                  : (
-                    <div className="space-y-1">
-                      {recentProduction.map((l, i) => (
-                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                          <div className="flex items-center gap-3">
-                            <span className="text-xs text-gray-400">{l.date}</span>
-                            <span className="text-xs font-mono bg-gray-200 text-gray-600 px-2 py-0.5 rounded">{l.code}</span>
-                            <span className="text-sm text-gray-700">{l.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-500">× {l.qty} @ ₹{l.rate}</span>
-                            <span className="text-sm font-bold text-indigo-600">₹{(l.qty * l.rate).toLocaleString()}</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )
-              )}
+  <div className="space-y-3">
+    {/* Filter tabs */}
+    <div className="flex gap-2">
+      {['thisWeek', 'thisMonth', 'all'].map(f => (
+        <button
+          key={f}
+          onClick={() => { setLogFilter(f); setLogPage(1) }}
+          className={`px-3 py-1 rounded-lg text-xs font-medium transition ${
+            logFilter === f
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          {f === 'thisWeek' ? 'This Week' : f === 'thisMonth' ? 'This Month' : 'All Time'}
+        </button>
+      ))}
+    </div>
+
+    {emp.salaryType === 'DAILY' ? (
+      (() => {
+        const now = new Date()
+        const day = now.getDay()
+        const monday = new Date(now)
+        monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
+        const mondayStr = monday.toISOString().split('T')[0]
+        const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+
+        const filtered = [...emp.attendanceLogs]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .filter(l => {
+            if (logFilter === 'thisWeek') return l.date >= mondayStr
+            if (logFilter === 'thisMonth') return l.date >= firstOfMonth
+            return true
+          })
+
+        const totalPages = Math.ceil(filtered.length / LOGS_PER_PAGE)
+        const paginated = filtered.slice((logPage - 1) * LOGS_PER_PAGE, logPage * LOGS_PER_PAGE)
+
+        const presentCount = filtered.filter(l => l.status === 'present').length
+        const halfCount = filtered.filter(l => l.status === 'half').length
+        const absentCount = filtered.filter(l => l.status === 'absent').length
+
+        return (
+          <div className="space-y-2">
+            {/* Summary row */}
+            <div className="flex gap-3">
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">✅ {presentCount} present</span>
+              <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">🌓 {halfCount} half</span>
+              <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">❌ {absentCount} absent</span>
             </div>
-          )}
+
+            {filtered.length === 0 ? (
+              <p className="text-sm text-gray-400">No attendance logged</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  {paginated.map((l, i) => (
+                    <div key={i} className={`flex items-center justify-between px-3 py-2 rounded-lg text-xs ${
+                      l.status === 'present' ? 'bg-green-100 text-green-700'
+                      : l.status === 'half' ? 'bg-yellow-100 text-yellow-700'
+                      : 'bg-red-100 text-red-700'
+                    }`}>
+                      <span>{l.date}</span>
+                      <span className="font-bold capitalize">{l.status}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-xs text-gray-400">{filtered.length} records · Page {logPage}/{totalPages}</p>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                        disabled={logPage === 1}
+                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-40"
+                      >← Prev</button>
+                      <button
+                        onClick={() => setLogPage(p => Math.min(totalPages, p + 1))}
+                        disabled={logPage === totalPages}
+                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-40"
+                      >Next →</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()
+    ) : (
+      (() => {
+        const now = new Date()
+        const day = now.getDay()
+        const monday = new Date(now)
+        monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
+        const mondayStr = monday.toISOString().split('T')[0]
+        const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+
+        const filtered = [...emp.productionLogs]
+          .sort((a, b) => b.date.localeCompare(a.date))
+          .filter(l => {
+            if (logFilter === 'thisWeek') return l.date >= mondayStr
+            if (logFilter === 'thisMonth') return l.date >= firstOfMonth
+            return true
+          })
+
+        const totalPages = Math.ceil(filtered.length / LOGS_PER_PAGE)
+        const paginated = filtered.slice((logPage - 1) * LOGS_PER_PAGE, logPage * LOGS_PER_PAGE)
+        const totalEarned = filtered.reduce((s, l) => s + (l.qty * l.rate), 0)
+
+        return (
+          <div className="space-y-2">
+            {/* Summary */}
+            <div className="flex gap-3">
+              <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                {filtered.length} entries
+              </span>
+              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                ₹{totalEarned.toLocaleString()} earned
+              </span>
+            </div>
+
+            {filtered.length === 0 ? (
+              <p className="text-sm text-gray-400">No production logged</p>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  {paginated.map((l, i) => (
+                    <div key={i} className="bg-gray-50 rounded-lg px-3 py-2 flex items-center justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-mono bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">{l.code}</span>
+                          <span className="text-xs text-gray-400">{l.date}</span>
+                        </div>
+                        <p className="text-xs text-gray-600 mt-0.5 truncate max-w-[140px]">{l.name}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500">×{l.qty} @ ₹{l.rate}</p>
+                        <p className="text-sm font-bold text-indigo-600">₹{(l.qty * l.rate).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-xs text-gray-400">{filtered.length} records · Page {logPage}/{totalPages}</p>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setLogPage(p => Math.max(1, p - 1))}
+                        disabled={logPage === 1}
+                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-40"
+                      >← Prev</button>
+                      <button
+                        onClick={() => setLogPage(p => Math.min(totalPages, p + 1))}
+                        disabled={logPage === totalPages}
+                        className="px-2 py-1 text-xs rounded bg-gray-100 hover:bg-gray-200 disabled:opacity-40"
+                      >Next →</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )
+      })()
+    )}
+  </div>
+)}
 
           {/* Salary history */}
           {activeSection === 'salary' && (
@@ -600,6 +738,7 @@ function Employees() {
 }
 
   const dailyEmployees = employees.filter(e => e.salaryType === 'DAILY')
+  console.log('All attendance logs:', dailyEmployees.flatMap(e => e.attendanceLogs).map(l => l.date + ' ' + l.status))
   const labourEmployees = employees.filter(e => e.salaryType === 'LABOUR')
 
   const totalPending = employees.reduce((s, emp) => {
@@ -635,12 +774,28 @@ function Employees() {
           <p className="text-sm text-gray-500">Salary Pending</p>
           <p className="text-2xl font-bold text-red-500 mt-1">₹{totalPending.toLocaleString()}</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-5">
-          <p className="text-sm text-gray-500">This Week Attendance</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">
-            {dailyEmployees.reduce((s, e) => s + e.attendanceLogs.filter(l => l.status === 'present').length, 0)} days
-          </p>
-        </div>
+        {/* <div className="bg-white rounded-xl shadow p-5">
+            <p className="text-sm text-gray-500">This Week Attendance</p>
+            <p className="text-2xl font-bold text-green-600 mt-1">
+              {(() => {
+                const now = new Date()
+                const day = now.getDay()
+                const monday = new Date(now)
+                monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1))
+                const sunday = new Date(monday)
+                sunday.setDate(monday.getDate() + 6)
+                const mondayStr = monday.toISOString().split('T')[0]
+                const sundayStr = sunday.toISOString().split('T')[0]
+                return dailyEmployees.reduce((s, e) =>
+                  s + e.attendanceLogs.filter(l =>
+                    l.status === 'present' &&
+                    l.date >= mondayStr &&
+                    l.date <= sundayStr
+                  ).length, 0)
+              })()} days
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Across {dailyEmployees.length} daily employees</p>
+          </div> */}
       </div>
 
       {/* Tabs */}

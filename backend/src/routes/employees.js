@@ -8,7 +8,9 @@ router.get('/', auth, async (req, res) => {
   try {
     const employees = await prisma.employee.findMany({
       include: {
-        assignedProducts: true,
+        assignedProducts: {
+          include: { }
+        },
         attendanceLogs: { orderBy: { date: 'desc' } },
         productionLogs: { orderBy: { date: 'desc' } },
         salaryHistory: { orderBy: { createdAt: 'desc' } }
