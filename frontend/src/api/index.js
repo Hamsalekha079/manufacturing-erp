@@ -82,4 +82,8 @@ deleteProduct: (code) => request('DELETE', `/products/${code}`),
   request('POST', `/materials/purchases/${purchaseId}/payment`, { amount }),
   receivePendingKg: (purchaseId, additionalKg) =>
   request('PATCH', `/materials/purchases/${purchaseId}/receive`, { additionalKg }),
+  recordWasteCastingPayment: (id, amount) =>
+  request('POST', `/materials/waste-casting/${id}/payment`, { amount }),
+receivePendingWasteCasting: (id, additionalKg) =>
+  request('PATCH', `/materials/waste-casting/${id}/receive`, { additionalKg }),
 }

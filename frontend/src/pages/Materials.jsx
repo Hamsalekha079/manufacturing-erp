@@ -1136,31 +1136,35 @@ function CastingRound1Tab() {
 
 // ─── TAB 3: WASTE & CASTING ROUND 2 ─────────────────────
 function WasteCastingTab() {
-  const { castingCenters } = useApp()
-  const [entries, setEntries] = useState([])
+  const { castingCenters, addCastingEntry, addCastingCenter, setCastingCenters } = useApp()
   const [showModal, setShowModal] = useState(false)
+  const [showAddCenter, setShowAddCenter] = useState(false)
   const [openCenters, setOpenCenters] = useState({})
+  const [search, setSearch] = useState('')
+  const [payingEntry, setPayingEntry] = useState(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [receivingEntry, setReceivingEntry] = useState(null)
+  const [receiveKg, setReceiveKg] = useState('')
+  const [centerForm, setCenterForm] = useState({ name: '', phone: '' })
   const [form, setForm] = useState({
     centerName: '', wasteKg: '', returnedKg: '', ratePerKg: '', date: ''
   })
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!form.centerName || !form.wasteKg || !form.ratePerKg) return
-    const wasteKg = parseFloat(form.wasteKg)
+    const center = castingCenters.find(c => c.name === form.centerName)
+    if (!center) return
+    const sentKg = parseFloat(form.wasteKg)
     const returnedKg = parseFloat(form.returnedKg || 0)
     const ratePerKg = parseFloat(form.ratePerKg)
-    const newEntry = {
-      id: Date.now(),
-      centerName: form.centerName,
-      wasteKg,
+    await addCastingEntry({
+      centerId: center.id,
+      type: 'ROUND2_WASTE',
+      sentKg,
       returnedKg,
-      pendingKg: wasteKg - returnedKg,
       ratePerKg,
-      totalAmount: wasteKg * ratePerKg,
-      paidAmount: 0,
       date: form.date || new Date().toISOString().split('T')[0]
-    }
-    setEntries([newEntry, ...entries])
+    })
     setOpenCenters(prev => ({ ...prev, [form.centerName]: true }))
     setForm({ centerName: '', wasteKg: '', returnedKg: '', ratePerKg: '', date: '' })
     setShowModal(false)
@@ -1170,49 +1174,73 @@ function WasteCastingTab() {
     setOpenCenters(prev => ({ ...prev, [name]: !prev[name] }))
   }
 
-  const grouped = castingCenters.map(c => ({
+  const filtered = castingCenters.filter(c =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const grouped = filtered.map(c => ({
     ...c,
-    entries: entries.filter(e => e.centerName === c.name)
+    entries: (c.entries || []).filter(e => e.type === 'ROUND2_WASTE')
   }))
 
-  const totalWaste = 0
-  const totalSent = entries.reduce((s, e) => s + e.wasteKg, 0)
-  const totalReturned = entries.reduce((s, e) => s + e.returnedKg, 0)
-  const totalPending = entries.reduce((s, e) => s + e.pendingKg, 0)
-  const totalCharges = entries.reduce((s, e) => s + e.totalAmount, 0)
-  const totalPaid = entries.reduce((s, e) => s + e.paidAmount, 0)
+  const allEntries = castingCenters.flatMap(c =>
+    (c.entries || []).filter(e => e.type === 'ROUND2_WASTE')
+  )
+  const totalWaste = allEntries.reduce((s, e) => s + e.sentKg, 0)
+  const totalReturned = allEntries.reduce((s, e) => s + e.returnedKg, 0)
+  const totalPending = allEntries.reduce((s, e) => s + e.pendingKg, 0)
+  const totalCharges = allEntries.reduce((s, e) => s + e.totalAmount, 0)
+  const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
 
   return (
     <div className="space-y-4">
       {/* Summary */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
-          <p className="text-sm text-gray-500">Total Waste</p>
-          <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{totalWaste} kg</p>
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Total Waste Sent</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">{totalWaste} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
-          <p className="text-sm text-gray-500">Sent to Casting</p>
-          <p className="text-xl sm:text-2xl font-bold text-indigo-600 mt-1">{totalSent} kg</p>
-        </div>
-        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
+        <div className="bg-white rounded-xl shadow p-5">
           <p className="text-sm text-gray-500">Returned</p>
-          <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{totalReturned} kg</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{totalReturned} kg</p>
         </div>
-        <div className="bg-white rounded-xl shadow p-4 sm:p-5">
+        <div className="bg-white rounded-xl shadow p-5">
           <p className="text-sm text-gray-500">Pending with them</p>
-          <p className="text-xl sm:text-2xl font-bold text-orange-500 mt-1">{totalPending} kg</p>
+          <p className="text-2xl font-bold text-orange-500 mt-1">{totalPending} kg</p>
+        </div>
+        <div className="bg-white rounded-xl shadow p-5">
+          <p className="text-sm text-gray-500">Charges Due</p>
+          <p className="text-2xl font-bold text-red-500 mt-1">₹{(totalCharges - totalPaid).toLocaleString()}</p>
         </div>
       </div>
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+      <div className="flex justify-between items-center">
         <h3 className="font-semibold text-gray-800">Waste Casting Centers</h3>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 w-full sm:w-auto"
-        >
-          + Add Entry
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search centers..."
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 pr-8"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <Search size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400" />
+          </div>
+          <button
+            onClick={() => setShowAddCenter(true)}
+            className="bg-white border border-indigo-600 text-indigo-600 px-4 py-2 rounded-lg text-sm hover:bg-indigo-50"
+          >
+            + Add Center
+          </button>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700"
+          >
+            + Add Entry
+          </button>
+        </div>
       </div>
 
       {/* Center wise accordion */}
@@ -1226,11 +1254,11 @@ function WasteCastingTab() {
           return (
             <div key={center.id} className="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
               <div
-                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 cursor-pointer hover:bg-gray-50 transition"
+                className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50"
                 onClick={() => toggleCenter(center.name)}
               >
-                <div className="flex items-center gap-3 flex-wrap">
-                  <div className="w-10 h-10 flex-shrink-0 rounded-full bg-amber-100 flex items-center justify-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
                     <span className="text-amber-600 font-bold">{center.name[0]}</span>
                   </div>
                   <div>
@@ -1238,13 +1266,13 @@ function WasteCastingTab() {
                     <p className="text-xs text-gray-400">{center.phone}</p>
                   </div>
                   {cPending > 0 && (
-                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full whitespace-nowrap">
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded-full">
                       {cPending} kg pending
                     </span>
                   )}
                 </div>
-                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6">
-                  <div className="text-left sm:text-right">
+                <div className="flex items-center gap-6">
+                  <div className="text-right">
                     <p className="text-xs text-gray-400">Charges / Paid / Balance</p>
                     <p className="text-sm font-bold">
                       ₹{cTotal.toLocaleString()} /
@@ -1252,7 +1280,7 @@ function WasteCastingTab() {
                       <span className="text-red-500"> ₹{(cTotal - cPaid).toLocaleString()}</span>
                     </p>
                   </div>
-                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full whitespace-nowrap">
+                  <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">
                     {center.entries.length} entries
                   </span>
                   {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -1260,36 +1288,70 @@ function WasteCastingTab() {
               </div>
 
               {isOpen && (
-                <div className="border-t border-gray-100 overflow-x-auto">
+                <div className="border-t border-gray-100">
                   {center.entries.length === 0 ? (
                     <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p>
                   ) : (
-                    <table className="w-full min-w-[680px]">
+                    <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr className="text-left text-xs text-gray-400 uppercase">
-                          <th className="px-5 py-3">Date</th>
-                          <th className="px-5 py-3">Waste Sent</th>
-                          <th className="px-5 py-3">Returned</th>
-                          <th className="px-5 py-3">Pending</th>
-                          <th className="px-5 py-3">Rate/kg</th>
-                          <th className="px-5 py-3">Charges</th>
-                          <th className="px-5 py-3">Paid</th>
-                          <th className="px-5 py-3">Status</th>
+                          <th className="px-4 py-3">Date</th>
+                          <th className="px-4 py-3">Waste Sent</th>
+                          <th className="px-4 py-3">Returned</th>
+                          <th className="px-4 py-3">Diff</th>
+                          <th className="px-4 py-3">Rate/kg</th>
+                          <th className="px-4 py-3">Charges</th>
+                          <th className="px-4 py-3">Paid</th>
+                          <th className="px-4 py-3">Balance</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Action</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-50">
-                        {center.entries.map(e => (
-                          <tr key={e.id} className="hover:bg-gray-50">
-                            <td className="px-5 py-3 text-sm text-gray-400 whitespace-nowrap">{e.date}</td>
-                            <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">{e.wasteKg} kg</td>
-                            <td className="px-5 py-3 text-sm text-green-600 whitespace-nowrap">{e.returnedKg} kg</td>
-                            <td className="px-5 py-3 text-sm font-bold text-orange-500 whitespace-nowrap">{e.pendingKg} kg</td>
-                            <td className="px-5 py-3 text-sm text-gray-600 whitespace-nowrap">₹{e.ratePerKg}</td>
-                            <td className="px-5 py-3 text-sm font-bold text-gray-800 whitespace-nowrap">₹{e.totalAmount.toLocaleString()}</td>
-                            <td className="px-5 py-3 text-sm text-green-600 whitespace-nowrap">₹{e.paidAmount.toLocaleString()}</td>
-                            <td className="px-5 py-3"><StatusBadge paid={e.paidAmount} total={e.totalAmount} /></td>
-                          </tr>
-                        ))}
+                      <tbody className="divide-y divide-gray-100">
+                        {center.entries.map(e => {
+                          const diff = e.returnedKg - e.sentKg
+                          return (
+                            <tr key={e.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-3 text-sm text-gray-400">{e.date}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{e.sentKg} kg</td>
+                              <td className="px-4 py-3 text-sm text-green-600 font-medium">{e.returnedKg} kg</td>
+                              <td className="px-4 py-3 text-sm">
+                                {diff === 0 ? <span className="text-gray-400">—</span>
+                                  : diff > 0 ? <span className="text-blue-500">+{diff} kg extra</span>
+                                  : <span className="text-orange-500">{Math.abs(diff)} kg pending</span>}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-gray-600">₹{e.ratePerKg}</td>
+                              <td className="px-4 py-3 text-sm font-bold text-gray-800">₹{e.totalAmount.toLocaleString()}</td>
+                              <td className="px-4 py-3 text-sm text-green-600">₹{e.paidAmount.toLocaleString()}</td>
+                              <td className="px-4 py-3 text-sm font-bold text-red-500">
+                                {e.totalAmount - e.paidAmount > 0 ? `₹${(e.totalAmount - e.paidAmount).toLocaleString()}` : '-'}
+                              </td>
+                              <td className="px-4 py-3">
+                                <StatusBadge paid={e.paidAmount} total={e.totalAmount} />
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex gap-1">
+                                  {e.pendingKg > 0 && (
+                                    <button
+                                      onClick={() => { setReceivingEntry(e); setReceiveKg('') }}
+                                      className="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600"
+                                    >
+                                      📦 Receive
+                                    </button>
+                                  )}
+                                  {e.totalAmount - e.paidAmount > 0 && (
+                                    <button
+                                      onClick={() => { setPayingEntry(e); setPayAmount('') }}
+                                      className="bg-green-500 text-white px-2 py-1 rounded text-xs hover:bg-green-600"
+                                    >
+                                      💰 Pay
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   )}
@@ -1300,10 +1362,52 @@ function WasteCastingTab() {
         })}
       </div>
 
-      {/* Modal */}
+      {/* Add Center Modal */}
+      {showAddCenter && (
+        <Modal title="Add Casting Center" onClose={() => setShowAddCenter(false)}>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Center Name</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={centerForm.name}
+                onChange={e => setCenterForm({ ...centerForm, name: e.target.value })}
+                placeholder="e.g. Bhaskar"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Phone</label>
+              <input
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={centerForm.phone}
+                onChange={e => setCenterForm({ ...centerForm, phone: e.target.value })}
+                placeholder="9876543210"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={async () => {
+                  if (!centerForm.name) return
+                  await addCastingCenter(centerForm)
+                  setCenterForm({ name: '', phone: '' })
+                  setShowAddCenter(false)
+                }}
+                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
+              >
+                Add Center
+              </button>
+              <button onClick={() => setShowAddCenter(false)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Add Entry Modal */}
       {showModal && (
         <Modal title="Add Waste Casting Entry" onClose={() => setShowModal(false)}>
-          <div className="space-y-4 overflow-y-auto max-h-[70vh]">
+          <div className="space-y-4">
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Casting Center</label>
               <select
@@ -1317,11 +1421,10 @@ function WasteCastingTab() {
                 ))}
               </select>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Waste Sent (kg)</label>
-                <input
-                  type="number"
+                <input type="number"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={form.wasteKg}
                   onChange={e => setForm({ ...form, wasteKg: e.target.value })}
@@ -1330,8 +1433,7 @@ function WasteCastingTab() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 block mb-1">Returned (kg)</label>
-                <input
-                  type="number"
+                <input type="number"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   value={form.returnedKg}
                   onChange={e => setForm({ ...form, returnedKg: e.target.value })}
@@ -1339,57 +1441,169 @@ function WasteCastingTab() {
                 />
               </div>
             </div>
+            {form.wasteKg && form.returnedKg && (
+              <div className={`rounded-lg px-4 py-2 text-sm ${
+                parseFloat(form.returnedKg) > parseFloat(form.wasteKg) ? 'bg-blue-50 text-blue-700'
+                : parseFloat(form.returnedKg) < parseFloat(form.wasteKg) ? 'bg-orange-50 text-orange-700'
+                : 'bg-green-50 text-green-700'
+              }`}>
+                {parseFloat(form.returnedKg) > parseFloat(form.wasteKg)
+                  ? `✓ Returned ${parseFloat(form.returnedKg) - parseFloat(form.wasteKg)} kg extra`
+                  : parseFloat(form.returnedKg) < parseFloat(form.wasteKg)
+                  ? `⚠ ${parseFloat(form.wasteKg) - parseFloat(form.returnedKg)} kg still pending`
+                  : '✓ Exact amount returned'}
+              </div>
+            )}
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Rate per kg (₹)</label>
-              <input
-                type="number"
+              <input type="number"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={form.ratePerKg}
                 onChange={e => setForm({ ...form, ratePerKg: e.target.value })}
                 placeholder="0"
               />
             </div>
-
             {form.wasteKg && form.ratePerKg && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-sm text-amber-700">Total Charges</span>
-                  <span className="font-bold text-amber-700">
-                    ₹{(parseFloat(form.wasteKg) * parseFloat(form.ratePerKg)).toLocaleString()}
-                  </span>
-                </div>
-                {form.returnedKg && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-orange-600">Pending with them</span>
-                    <span className="font-bold text-orange-600">
-                      {parseFloat(form.wasteKg) - parseFloat(form.returnedKg)} kg
-                    </span>
-                  </div>
-                )}
+              <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex justify-between">
+                <span className="text-sm text-amber-700">
+                  Total charges ({form.wasteKg} kg × ₹{form.ratePerKg})
+                </span>
+                <span className="font-bold text-amber-700">
+                  ₹{(parseFloat(form.wasteKg) * parseFloat(form.ratePerKg)).toLocaleString()}
+                </span>
               </div>
             )}
-
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-1">Date</label>
-              <input
-                type="date"
+              <input type="date"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 value={form.date}
                 onChange={e => setForm({ ...form, date: e.target.value })}
               />
             </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <button
-                onClick={handleSubmit}
-                className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700"
-              >
+            <div className="flex gap-3 pt-2">
+              <button onClick={handleSubmit} className="flex-1 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">
                 Add Entry
               </button>
+              <button onClick={() => setShowModal(false)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Pay Modal */}
+      {payingEntry && (
+        <Modal title="Record Payment" onClose={() => setPayingEntry(null)}>
+          <div className="space-y-4">
+            <div className="bg-gray-50 rounded-lg px-4 py-3 flex justify-between">
+              <span className="text-sm text-gray-600">Balance due</span>
+              <span className="font-bold text-red-600">₹{(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}</span>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">Amount (₹)</label>
+              <input type="number"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={payAmount}
+                onChange={e => setPayAmount(e.target.value)}
+                placeholder={`Max: ₹${(payingEntry.totalAmount - payingEntry.paidAmount).toLocaleString()}`}
+              />
+            </div>
+            <div className="flex gap-3">
               <button
-                onClick={() => setShowModal(false)}
-                className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200"
+                onClick={async () => {
+                  if (!payAmount) return
+                  try {
+                    const updated = await api.recordWasteCastingPayment(payingEntry.id, parseFloat(payAmount))
+                    setCastingCenters(prev => prev.map(c => ({
+                      ...c,
+                      entries: (c.entries || []).map(e =>
+                        e.id === payingEntry.id ? { ...e, paidAmount: updated.paidAmount } : e
+                      )
+                    })))
+                    setPayingEntry(null)
+                    setPayAmount('')
+                  } catch (err) {
+                    console.error('Failed to record payment:', err)
+                  }
+                }}
+                className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm hover:bg-green-700"
               >
+                Record Payment
+              </button>
+              <button onClick={() => setPayingEntry(null)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Receive Pending Modal */}
+      {receivingEntry && (
+        <Modal title="Receive Pending Material" onClose={() => setReceivingEntry(null)}>
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 space-y-1">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Waste Sent</span>
+                <span className="font-bold">{receivingEntry.sentKg} kg</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Already Returned</span>
+                <span className="font-bold text-green-600">{receivingEntry.returnedKg} kg</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Pending</span>
+                <span className="font-bold text-orange-500">{receivingEntry.pendingKg} kg</span>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 block mb-1">How many kg returned now?</label>
+              <input type="number"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                value={receiveKg}
+                onChange={e => setReceiveKg(e.target.value)}
+                placeholder={`Max: ${receivingEntry.pendingKg} kg`}
+              />
+            </div>
+            {receiveKg && (
+              <div className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3 space-y-1">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">New Total Returned</span>
+                  <span className="font-bold text-indigo-600">{receivingEntry.returnedKg + parseFloat(receiveKg)} kg</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Remaining Pending</span>
+                  <span className="font-bold text-orange-500">{Math.max(0, receivingEntry.pendingKg - parseFloat(receiveKg))} kg</span>
+                </div>
+              </div>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  if (!receiveKg) return
+                  try {
+                    const updated = await api.receivePendingWasteCasting(receivingEntry.id, parseFloat(receiveKg))
+                    setCastingCenters(prev => prev.map(c => ({
+                      ...c,
+                      entries: (c.entries || []).map(e =>
+                        e.id === receivingEntry.id
+                          ? { ...e, returnedKg: updated.returnedKg, pendingKg: updated.pendingKg, extraKg: updated.extraKg }
+                          : e
+                      )
+                    })))
+                    setReceivingEntry(null)
+                    setReceiveKg('')
+                  } catch (err) {
+                    console.error('Failed to receive kg:', err)
+                  }
+                }}
+                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+              >
+                Confirm Receipt
+              </button>
+              <button onClick={() => setReceivingEntry(null)} className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm">
                 Cancel
               </button>
             </div>
@@ -1434,9 +1648,7 @@ const { categories, products, reloadStock } = useApp()
     setRuns(prev => [{ ...newRun, date: newRun.date.split('T')[0] }, ...prev])
 
     // Reload stock from backend to reflect changes
-    const stockData = await api.getStock()
-    setSemiFinished(groupStock(stockData.semi))
-    setFinished(groupStock(stockData.finished))
+    await reloadStock()
 
     setForm({ category: '', productCode: '', productsMade: '', stockType: 'semi', materialUsedKg: '', wasteKg: '', date: '' })
     setShowModal(false)

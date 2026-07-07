@@ -105,13 +105,12 @@ function Stock() {
     setShowFinishModal(false)
   }
 
-  function handleAdjustStock() {
-    if (!form.groupCode || !form.itemCode || !form.qty) return
-    adjustStock(form.stockType, form.groupCode, form.itemCode, form.type, parseInt(form.qty))
-    setForm({ stockType: 'finished', groupCode: '', itemCode: '', type: 'add', qty: '', reason: '' })
-    setShowAdjustModal(false)
-  }
-
+function handleAdjustStock() {
+  if (!form.groupCode || !form.itemCode || !form.qty) return
+  adjustStock(form.stockType, form.groupCode, form.itemCode, form.type, parseInt(form.qty))
+  setForm({ stockType: 'finished', groupCode: '', itemCode: '', type: 'add', qty: '', reason: '' })
+  setShowAdjustModal(false)
+}
   const totalFinished = finished.reduce((s, g) => s + g.items.reduce((si, i) => si + i.stock, 0), 0)
   const totalSemi = semiFinished.reduce((s, g) => s + g.items.reduce((si, i) => si + i.stock, 0), 0)
   const lowFinished = finished.reduce((s, g) => s + g.items.filter(i => i.stock <= g.low && i.stock > 0).length, 0)
@@ -294,8 +293,8 @@ function Stock() {
                 onChange={e => setForm({ ...form, groupCode: e.target.value, itemCode: '' })}
               >
                 <option value="">Select group</option>
-                {(form.stockType === 'finished' ? finished : semiFinished).map(g => (
-  <option key={g.group} value={g.code}>{g.group}</option>
+               {(form.stockType === 'finished' ? finished : semiFinished).map(g => (
+  <option key={g.group} value={g.group}>{g.group}</option>
 ))}
               </select>
             </div>

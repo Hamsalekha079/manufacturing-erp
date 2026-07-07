@@ -211,5 +211,45 @@ router.post('/production', auth, async (req, res) => {
     res.status(500).json({ error: err.message })
   }
 })
+// POST record waste casting payment
+router.post('/waste-casting/:id/payment', auth, async (req, res) => {
+  try {
+    const { amount } = req.body
+    const entry = await prisma.castingEntry.update({
+      where: { id: parseInt(req.params.id) },
+      data: { paidAmount: { increment: parseFloat(amount) } }
+    })
+    await prisma.expense.create({
+      data: {
+        category: 'Casting',
+        description: `Waste casting payment #${entry.id}`,
+        amount: parseFloat(amount),
+        date: new Date()
+      }
+    })
+    res.json(entry)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 
+// PATCH receive pending waste casting
+router.patch('/waste-casting/:id/receive', auth, async (req, res) => {
+  try {
+    const { additionalKg } = req.body
+    const existing = await prisma.castingEntry.findUnique({
+      where: { id: parseInt(req.params.id) }
+    })
+    const newReturnedKg = existing.returnedKg + parseFloat(additionalKg)
+    const newPendingKg = Math.max(0, existing.sentKg - newReturnedKg)
+    const newExtraKg = Math.max(0, newReturnedKg - existing.sentKg)
+    const entry = await prisma.castingEntry.update({
+      where: { id: parseInt(req.params.id) },
+      data: { returnedKg: newReturnedKg, pendingKg: newPendingKg, extraKg: newExtraKg }
+    })
+    res.json(entry)
+  } catch (err) {
+    res.status(500).json({ error: err.message })
+  }
+})
 module.exports = router

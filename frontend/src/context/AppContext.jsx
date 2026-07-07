@@ -13,7 +13,7 @@ function groupStock(flatList) {
     if (!groups[category]) {
       groups[category] = {
         group: category,
-        code: p.code.split(' ')[0].split('-')[0],
+        code: category, // use full category as unique key
         unit: 'pcs',
         low: 5,
         items: []
@@ -280,7 +280,7 @@ async function addProduct(product) {
   }
 }
 
- async function adjustStock(type, groupCode, itemCode, adjustType, qty) {
+async function adjustStock(type, groupCode, itemCode, adjustType, qty) {
   try {
     await api.adjustStock({ type, productCode: itemCode, adjustType, qty })
     const setter = type === 'semi' ? setSemiFinished : setFinished
