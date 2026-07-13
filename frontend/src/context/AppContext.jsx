@@ -88,7 +88,15 @@ async function loadAllData() {
     // after setting other state:
 setSuppliers(suppliersData.map(s => ({
   ...s,
-  entries: s.purchases || []
+  entries: (s.purchases || []).map(p => ({
+    ...p,
+    date: p.date.split('T')[0],
+    payments: (p.payments || []).map(pay => ({
+  ...pay,
+  date: pay.date.split('T')[0],
+  note: pay.note || ''
+}))
+  }))
 })))
 async function addSupplier(supplierData) {
   try {
@@ -101,7 +109,15 @@ async function addSupplier(supplierData) {
 }
 setCastingCenters(castingData.map(c => ({
   ...c,
-  entries: c.castingEntries || []
+  entries: (c.castingEntries || []).map(e => ({
+    ...e,
+    date: e.date.split('T')[0],
+    payments: (e.payments || []).map(pay => ({
+  ...pay,
+  date: pay.date.split('T')[0],
+  note: pay.note || ''
+}))
+  }))
 })))
 setCategories(catsData)
     // Employees — map API format to frontend format
@@ -549,13 +565,16 @@ async function addSupplier(supplierData) {
 async function addSupplierPurchase(purchaseData) {
   try {
     await api.addPurchase(purchaseData)
-    // Reload suppliers from DB to get real ids
     const suppliersData = await api.getSuppliers()
     setSuppliers(suppliersData.map(s => ({
       ...s,
       entries: (s.purchases || []).map(p => ({
         ...p,
-        date: p.date.split('T')[0]
+        date: p.date.split('T')[0],
+        payments: (p.payments || []).map(pay => ({
+          ...pay,
+          date: pay.date.split('T')[0]
+        }))
       }))
     })))
   } catch (err) {
@@ -564,13 +583,19 @@ async function addSupplierPurchase(purchaseData) {
 }
 async function addCastingEntry(entryData) {
   try {
-    const newEntry = await api.addCasting(entryData)
-    setCastingCenters(prev => prev.map(c =>
-      c.id !== entryData.centerId ? c : {
-        ...c,
-        entries: [{ ...newEntry, date: newEntry.date.split('T')[0] }, ...c.entries]
-      }
-    ))
+    await api.addCasting(entryData)
+    const castingData = await api.getCasting()
+    setCastingCenters(castingData.map(c => ({
+      ...c,
+      entries: (c.castingEntries || []).map(e => ({
+        ...e,
+        date: e.date.split('T')[0],
+        payments: (e.payments || []).map(pay => ({
+          ...pay,
+          date: pay.date.split('T')[0]
+        }))
+      }))
+    })))
   } catch (err) {
     console.error('Failed to add casting entry:', err)
   }

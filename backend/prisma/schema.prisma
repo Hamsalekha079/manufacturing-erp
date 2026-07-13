@@ -90,6 +90,7 @@ model RawMaterialPurchase {
   paidAmount   Float    @default(0)
   date         DateTime @default(now())
   createdAt    DateTime @default(now())
+  payments MaterialPayment[]
 }
 
 // ─── CASTING ─────────────────────────────────────────────
@@ -116,6 +117,7 @@ model CastingEntry {
   paidAmount Float         @default(0)
   date       DateTime      @default(now())
   createdAt  DateTime      @default(now())
+  payments CastingPayment[]
 }
 
 enum CastingType {
@@ -287,4 +289,24 @@ model Expense {
   amount      Float
   date        DateTime @default(now())
   createdAt   DateTime @default(now())
+}
+
+model MaterialPayment {
+  id         Int      @id @default(autoincrement())
+  purchaseId Int
+  purchase   RawMaterialPurchase @relation(fields: [purchaseId], references: [id])
+  amount     Float
+  date       DateTime @default(now())
+  note       String?
+  createdAt  DateTime @default(now())
+}
+
+model CastingPayment {
+  id        Int          @id @default(autoincrement())
+  entryId   Int
+  entry     CastingEntry @relation(fields: [entryId], references: [id])
+  amount    Float
+  date      DateTime     @default(now())
+  note      String?
+  createdAt DateTime     @default(now())
 }

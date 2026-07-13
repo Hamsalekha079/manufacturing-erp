@@ -5,10 +5,16 @@ const auth = require('../middleware/auth')
 
 // GET suppliers
 // GET suppliers
+// GET supplier purchases with payment history
 router.get('/suppliers', auth, async (req, res) => {
   try {
     const suppliers = await prisma.supplier.findMany({
-      include: { purchases: { orderBy: { date: 'desc' } } }
+      include: {
+        purchases: {
+          include: { payments: { orderBy: { date: 'desc' } } },
+          orderBy: { date: 'desc' }
+        }
+      }
     })
     res.json(suppliers)
   } catch (err) {
@@ -25,29 +31,48 @@ router.post('/suppliers', auth, async (req, res) => {
   }
 })
 
-// POST add purchase
-// POST record payment for purchase
+// POST record material payment
 router.post('/purchases/:id/payment', auth, async (req, res) => {
   try {
-    const { amount } = req.body
-    const purchase = await prisma.rawMaterialPurchase.update({
-      where: { id: parseInt(req.params.id) },
+    const { amount, date, note } = req.body
+    const purchaseId = parseInt(req.params.id)
+
+    // Create payment record
+    const payment = await prisma.materialPayment.create({
+      data: {
+        purchaseId,
+        amount: parseFloat(amount),
+        date: date ? new Date(date) : new Date(),
+        note: note || null
+      }
+    })
+
+    // Update paidAmount on purchase
+    await prisma.rawMaterialPurchase.update({
+      where: { id: purchaseId },
       data: { paidAmount: { increment: parseFloat(amount) } }
     })
+
     // Add to expenses
+    const purchase = await prisma.rawMaterialPurchase.findUnique({
+      where: { id: purchaseId },
+      include: { supplier: true }
+    })
     await prisma.expense.create({
       data: {
         category: 'Material',
-        description: `Payment - supplier purchase #${purchase.id}`,
+        description: `Payment - ${purchase.supplier.name}`,
         amount: parseFloat(amount),
-        date: new Date()
+        date: date ? new Date(date) : new Date()
       }
     })
-    res.json(purchase)
+
+    res.json(payment)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
+
 // PATCH update received kg (for pending delivery)
 router.patch('/purchases/:id/receive', auth, async (req, res) => {
   try {
@@ -56,12 +81,10 @@ router.patch('/purchases/:id/receive', auth, async (req, res) => {
       where: { id: parseInt(req.params.id) }
     })
     const newReceivedKg = existing.receivedKg + parseFloat(additionalKg)
+    // totalAmount stays same — based on orderedKg
     const purchase = await prisma.rawMaterialPurchase.update({
       where: { id: parseInt(req.params.id) },
-      data: {
-        receivedKg: newReceivedKg,
-        totalAmount: newReceivedKg * existing.pricePerKg
-      }
+      data: { receivedKg: newReceivedKg }
     })
     res.json(purchase)
   } catch (err) {
@@ -71,7 +94,7 @@ router.patch('/purchases/:id/receive', auth, async (req, res) => {
 // POST add purchase
 router.post('/purchases', auth, async (req, res) => {
   try {
-    const { supplierId, materialType, orderedKg, receivedKg, pricePerKg, totalAmount, date } = req.body
+    const { supplierId, materialType, orderedKg, receivedKg, pricePerKg, totalAmount, paidAmount, date ,initialPaymentNote  } = req.body
     const purchase = await prisma.rawMaterialPurchase.create({
       data: {
         supplierId: parseInt(supplierId),
@@ -80,19 +103,45 @@ router.post('/purchases', auth, async (req, res) => {
         receivedKg: parseFloat(receivedKg),
         pricePerKg: parseFloat(pricePerKg),
         totalAmount: parseFloat(totalAmount),
+        paidAmount: parseFloat(paidAmount || 0),
         date: date ? new Date(date) : new Date()
       }
     })
+    // If initial payment was made, create payment history record
+    if (paidAmount && parseFloat(paidAmount) > 0) {
+     await prisma.materialPayment.create({
+  data: {
+    purchaseId: purchase.id,
+    amount: parseFloat(paidAmount),
+    date: date ? new Date(date) : new Date(),
+    note: initialPaymentNote || 'Initial payment'
+  }
+})
+      await prisma.expense.create({
+        data: {
+          category: 'Material',
+          description: `Initial payment - supplier purchase #${purchase.id}`,
+          amount: parseFloat(paidAmount),
+          date: date ? new Date(date) : new Date()
+        }
+      })
+    }
     res.json(purchase)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
 // GET casting centers
+// GET casting with payment history
 router.get('/casting', auth, async (req, res) => {
   try {
     const centers = await prisma.castingCenter.findMany({
-      include: { castingEntries: { orderBy: { date: 'desc' } } }
+      include: {
+        castingEntries: {
+          include: { payments: { orderBy: { date: 'desc' } } },
+          orderBy: { date: 'desc' }
+        }
+      }
     })
     res.json(centers)
   } catch (err) {
@@ -104,7 +153,7 @@ router.get('/casting', auth, async (req, res) => {
 // POST add casting entry
 router.post('/casting', auth, async (req, res) => {
   try {
-    const { centerId, type, sentKg, returnedKg, ratePerKg, date } = req.body
+    const { centerId, type, sentKg, returnedKg, ratePerKg, totalAmount, paidAmount, date ,initialPaymentNote  } = req.body
     const sent = parseFloat(sentKg)
     const returned = parseFloat(returnedKg || 0)
     const entry = await prisma.castingEntry.create({
@@ -116,10 +165,30 @@ router.post('/casting', auth, async (req, res) => {
         pendingKg: Math.max(0, sent - returned),
         extraKg: Math.max(0, returned - sent),
         ratePerKg: parseFloat(ratePerKg),
-        totalAmount: sent * parseFloat(ratePerKg),
+        totalAmount: parseFloat(totalAmount) || sent * parseFloat(ratePerKg),
+        paidAmount: parseFloat(paidAmount || 0),
         date: date ? new Date(date) : new Date()
       }
     })
+    // If initial payment was made, create payment history record
+    if (paidAmount && parseFloat(paidAmount) > 0) {
+     await prisma.castingPayment.create({
+  data: {
+    entryId: entry.id,
+    amount: parseFloat(paidAmount),
+    date: date ? new Date(date) : new Date(),
+    note: initialPaymentNote || 'Initial payment'
+  }
+})
+      await prisma.expense.create({
+        data: {
+          category: 'Casting',
+          description: `Initial casting payment #${entry.id}`,
+          amount: parseFloat(paidAmount),
+          date: date ? new Date(date) : new Date()
+        }
+      })
+    }
     res.json(entry)
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -138,25 +207,37 @@ router.post('/casting-centers', auth, async (req, res) => {
 // POST record casting payment
 router.post('/casting/:id/payment', auth, async (req, res) => {
   try {
-    const { amount } = req.body
-    const entry = await prisma.castingEntry.update({
-      where: { id: parseInt(req.params.id) },
+    const { amount, date, note } = req.body
+    const entryId = parseInt(req.params.id)
+
+    const payment = await prisma.castingPayment.create({
+      data: {
+        entryId,
+        amount: parseFloat(amount),
+        date: date ? new Date(date) : new Date(),
+        note: note || null
+      }
+    })
+
+    await prisma.castingEntry.update({
+      where: { id: entryId },
       data: { paidAmount: { increment: parseFloat(amount) } }
     })
+
     await prisma.expense.create({
       data: {
         category: 'Casting',
-        description: `Casting payment #${entry.id}`,
+        description: `Casting payment #${entryId}`,
         amount: parseFloat(amount),
-        date: new Date()
+        date: date ? new Date(date) : new Date()
       }
     })
-    res.json(entry)
+
+    res.json(payment)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
-
 // PATCH receive pending casting kg
 router.patch('/casting/:id/receive', auth, async (req, res) => {
   try {
@@ -214,20 +295,33 @@ router.post('/production', auth, async (req, res) => {
 // POST record waste casting payment
 router.post('/waste-casting/:id/payment', auth, async (req, res) => {
   try {
-    const { amount } = req.body
-    const entry = await prisma.castingEntry.update({
-      where: { id: parseInt(req.params.id) },
+    const { amount, date, note } = req.body
+    const entryId = parseInt(req.params.id)
+
+    const payment = await prisma.castingPayment.create({
+      data: {
+        entryId,
+        amount: parseFloat(amount),
+        date: date ? new Date(date) : new Date(),
+        note: note || null
+      }
+    })
+
+    await prisma.castingEntry.update({
+      where: { id: entryId },
       data: { paidAmount: { increment: parseFloat(amount) } }
     })
+
     await prisma.expense.create({
       data: {
         category: 'Casting',
-        description: `Waste casting payment #${entry.id}`,
+        description: `Waste casting payment #${entryId}`,
         amount: parseFloat(amount),
-        date: new Date()
+        date: date ? new Date(date) : new Date()
       }
     })
-    res.json(entry)
+
+    res.json(payment)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
