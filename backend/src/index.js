@@ -33,9 +33,6 @@ app.get('/api/health', (req, res) => {
 // Listen only when run directly (local dev). Vercel imports the app instead.
 if (require.main === module) {
   const port = process.env.PORT || 5000
-  app.listen(port, () => {
-    console.log(`Server running on port ${port}`)
-  })
+  app.listen(port, () => console.log(`Server running on port ${port}`))
 }
-
 module.exports = app
