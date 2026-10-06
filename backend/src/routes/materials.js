@@ -24,7 +24,25 @@ router.get('/suppliers', auth, async (req, res) => {
 // POST add supplier
 router.post('/suppliers', auth, async (req, res) => {
   try {
-    const supplier = await prisma.supplier.create({ data: req.body })
+    const { name, phone, obAmount, obPaidAmount, obDirection, obDate, obPaymentType, obNote } = req.body
+    const supplier = await prisma.supplier.create({ data: { name, phone } })
+
+    if (obAmount && parseFloat(obAmount) > 0) {
+      await prisma.supplierOpeningBalance.create({
+        data: {
+          supplierId: supplier.id,
+          totalAmount: parseFloat(obAmount),
+          paidAmount: parseFloat(obPaidAmount || 0),
+          orderedKg: 0,
+          receivedKg: 0,
+          pendingKg: 0,
+          lastDate: obDate ? new Date(obDate) : null,
+          lastPaymentType: obPaymentType || null,
+          note: obNote || null
+        }
+      })
+    }
+
     res.json(supplier)
   } catch (err) {
     res.status(500).json({ error: err.message })

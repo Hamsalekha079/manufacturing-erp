@@ -46,7 +46,9 @@ const [auth, setAuth] = useState({
   password: 'admin123',
   phone: '9876543210',
 })
-
+const [openingBalances, setOpeningBalances] = useState({
+  suppliers: [], casting: [], customers: [], employees: [], finance: null
+})
 // Load data from API on mount
 useEffect(() => {
   if (auth.isLoggedIn) loadAllData()
@@ -55,7 +57,7 @@ useEffect(() => {
 async function loadAllData() {
   console.log('🔄 Loading data from backend...')
   try {
-    const [prods, stockData, emps, custs, walkin, incomeData, expensesData, suppliersData, castingData, catsData,suppliers, castingCenters,] = await Promise.all([
+    const [prods, stockData, emps, custs, walkin, incomeData, expensesData, suppliersData, castingData, catsData,suppliers, castingCenters,openingData] = await Promise.all([
   api.getProducts(),
   api.getStock(),
   api.getEmployees(),
@@ -66,7 +68,9 @@ async function loadAllData() {
   api.getSuppliers(),
   api.getCasting(),
   api.getCategories(),
+  api.getOpeningBalances(),
 ])
+setOpeningBalances(openingData)
     console.log('✅ Products:', prods)
     console.log('✅ Stock:', stockData)
     console.log('✅ Employees:', emps)
@@ -98,6 +102,7 @@ setSuppliers(suppliersData.map(s => ({
 }))
   }))
 })))
+
 async function addSupplier(supplierData) {
   try {
     const newSupplier = await api.addSupplier(supplierData)
@@ -121,33 +126,41 @@ setCastingCenters(castingData.map(c => ({
 })))
 setCategories(catsData)
     // Employees — map API format to frontend format
-    setEmployees(emps.map(e => ({
-      ...e,
-      assignedProducts: e.assignedProducts.map(ap => ({
-        ...ap,
-        code: ap.productCode,
-        name: ap.productCode, // will update below
-        rate: ap.rate,
-        workType: ap.workType
-      })),
-      attendanceLogs: e.attendanceLogs.map(l => ({
-        ...l,
-        date: l.date.split('T')[0]
-      })),
-      productionLogs: e.productionLogs.map(l => {
-        const product = prods.find(p => p.code === l.productCode)
-        return {
-          ...l,
-          date: l.date.split('T')[0],
-          code: l.productCode,
-          name: product ? `${product.name} ${product.size}` : l.productCode,
-        }
-      }),
-      salaryHistory: e.salaryHistory.map(s => ({
-        ...s,
-        paidDate: s.paidDate ? s.paidDate.split('T')[0] : null
-      }))
-    })))
+  setEmployees(emps.map(e => ({
+  ...e,
+  assignedProducts: e.assignedProducts.map(ap => {
+    const product = prods.find(p => p.code === ap.productCode)
+    return {
+      ...ap,
+      code: ap.productCode,
+      name: product ? `${product.name} ${product.size}` : ap.productCode,
+    }
+  }),
+  weeklyAttendance: (e.weeklyAttendance || []).map(w => ({
+    ...w,
+    dateFrom: w.dateFrom.split('T')[0],
+    dateTo: w.dateTo.split('T')[0]
+  })),
+  productionLogs: e.productionLogs.map(l => {
+    const product = prods.find(p => p.code === l.productCode)
+    return {
+      ...l,
+      date: l.date.split('T')[0],
+      code: l.productCode,
+      name: product ? `${product.name} ${product.size}` : l.productCode,
+    }
+  }),
+  salaryHistory: e.salaryHistory.map(s => ({
+    ...s,
+    paidDate: s.paidDate ? s.paidDate.split('T')[0] : null,
+    payments: (s.payments || []).map(p => ({ ...p, date: p.date.split('T')[0] }))
+  })),
+  advances: (e.advances || []).map(a => ({
+    ...a,
+    date: a.date.split('T')[0],
+    repayments: (a.repayments || []).map(r => ({ ...r, date: r.date.split('T')[0] }))
+  }))
+})))
 
     // Customers — map orders and payments
     setCustomers(custs.map(c => ({
@@ -177,6 +190,74 @@ setCategories(catsData)
 
   } catch (err) {
     console.error('Failed to load data:', err)
+  }
+}
+async function recordSalaryPayment(empId, salaryId, data) {
+  try {
+    const payment = await api.recordSalaryPayment(empId, salaryId, data)
+    setEmployees(prev => prev.map(emp => {
+      if (emp.id !== empId) return emp
+      return {
+        ...emp,
+        salaryHistory: emp.salaryHistory.map(s => {
+          if (s.id !== salaryId) return s
+          const newPaidAmount = s.paidAmount + parseFloat(data.amount)
+          return {
+            ...s,
+            paidAmount: newPaidAmount,
+            paid: newPaidAmount >= s.amount,
+            payments: [{ ...payment, date: payment.date.split('T')[0] }, ...(s.payments || [])]
+          }
+        })
+      }
+    }))
+  } catch (err) {
+    console.error('Failed to record salary payment:', err)
+  }
+}
+
+async function recordAdvanceRepayment(empId, advanceId, data) {
+  try {
+    const repayment = await api.recordAdvanceRepayment(empId, advanceId, data)
+    setEmployees(prev => prev.map(emp => {
+      if (emp.id !== empId) return emp
+      return {
+        ...emp,
+        advances: emp.advances.map(a => {
+          if (a.id !== advanceId) return a
+          const totalRepaid = [...(a.repayments || []), repayment].reduce((s, r) => s + r.amount, 0)
+          const remaining = Math.max(0, a.amount - totalRepaid)
+          return {
+            ...a,
+            remainingAmount: remaining,
+            recovered: remaining <= 0,
+            repayments: [{ ...repayment, date: repayment.date.split('T')[0] }, ...(a.repayments || [])]
+          }
+        })
+      }
+    }))
+  } catch (err) {
+    console.error('Failed to record advance repayment:', err)
+  }
+}
+async function giveAdvance(empId, data) {
+  try {
+    const advance = await api.giveAdvance(empId, data)
+    setEmployees(prev => prev.map(e =>
+      e.id !== empId ? e : {
+        ...e,
+        advances: [{ ...advance, date: advance.date.split('T')[0] }, ...(e.advances || [])]
+      }
+    ))
+    setExpenses(prev => [...prev, {
+      id: Date.now(),
+      category: 'Salary',
+      description: `Advance`,
+      amount: data.amount,
+      date: data.date || new Date().toISOString().split('T')[0]
+    }])
+  } catch (err) {
+    console.error('Failed to give advance:', err)
   }
 }
 async function deleteProduct(code) {
@@ -318,19 +399,21 @@ async function adjustStock(type, groupCode, itemCode, adjustType, qty) {
 
   // ─── EMPLOYEE FUNCTIONS ──────────────────────────────────
 
-async function logAttendance(empId, date, status) {
+async function logWeeklyAttendance(empId, data) {
   try {
-    await api.logAttendance(empId, { date, status })
-    setEmployees(prev => prev.map(emp => {
-      if (emp.id !== empId) return emp
-      const existing = emp.attendanceLogs.find(l => l.date === date)
-      if (existing) {
-        return { ...emp, attendanceLogs: emp.attendanceLogs.map(l => l.date === date ? { ...l, status } : l) }
+    const attendance = await api.logWeeklyAttendance(empId, data)
+    setEmployees(prev => prev.map(emp =>
+      emp.id !== empId ? emp : {
+        ...emp,
+        weeklyAttendance: [{
+          ...attendance,
+          dateFrom: attendance.dateFrom.split('T')[0],
+          dateTo: attendance.dateTo.split('T')[0]
+        }, ...(emp.weeklyAttendance || [])]
       }
-      return { ...emp, attendanceLogs: [...emp.attendanceLogs, { id: Date.now(), date, status }] }
-    }))
+    ))
   } catch (err) {
-    console.error('Failed to log attendance:', err)
+    console.error('Failed to log weekly attendance:', err)
   }
 }
 
@@ -356,12 +439,25 @@ async function logAttendance(empId, date, status) {
   }
 }
 
- async function generateWeeklySalary(empId, weekLabel, dateFrom, dateTo) {
+async function generateWeeklySalary(empId, weekLabel, dateFrom, dateTo) {
   try {
     const salary = await api.generateSalary(empId, { weekLabel, dateFrom, dateTo })
     setEmployees(prev => prev.map(emp => {
       if (emp.id !== empId) return emp
-      return { ...emp, salaryHistory: [...emp.salaryHistory, { ...salary, paid: false }] }
+      return {
+        ...emp,
+        salaryHistory: [{
+          id: salary.id,
+          week: salary.week,
+          amount: salary.amount,
+          paidAmount: 0,
+          advanceDeducted: salary.advanceDeducted || 0,
+          paid: false,
+          paidDate: null,
+          method: null,
+          payments: []
+        }, ...emp.salaryHistory]
+      }
     }))
   } catch (err) {
     console.error('Failed to generate salary:', err)
@@ -504,26 +600,28 @@ async function addIncome(entry) {
 
 async function addEmployee(empData) {
   try {
-    const payload = {
-      name: empData.name,
-      phone: empData.phone,
-      role: empData.role,
-      salaryType: empData.salaryType,
-      dailyRate: parseFloat(empData.dailyRate) || 0,
-      assignedProducts: (empData.assignedProducts || []).map(p => ({
+    const { assignedProducts, obPendingSalary, obPendingAdvance, obDate, obNote, ...rest } = empData
+    const newEmp = await api.addEmployee({
+      ...rest,
+      assignedProducts: (assignedProducts || []).map(p => ({
         productCode: p.code,
-        workType: p.workType || '',
-        rate: parseFloat(p.rate) || 0
-      }))
-    }
-    const newEmp = await api.addEmployee(payload)
+        workType: p.workType,
+        rate: p.rate
+      })),
+      obPendingSalary, obPendingAdvance, obDate, obNote
+    })
     setEmployees(prev => [...prev, {
       ...newEmp,
-      assignedProducts: newEmp.assignedProducts || [],
-      attendanceLogs: [],
+      weeklyAttendance: [],
       productionLogs: [],
-      salaryHistory: []
+      salaryHistory: [],
+      advances: []
     }])
+    // Reload opening balances to include new employee OB
+    if (obPendingSalary || obPendingAdvance) {
+      const data = await api.getOpeningBalances()
+      setOpeningBalances(data)
+    }
   } catch (err) {
     console.error('Failed to add employee:', err)
   }
@@ -609,6 +707,115 @@ async function addCastingCenter(centerData) {
     console.error('Failed to add casting center:', err)
   }
 }
+async function reloadOpeningBalances() {
+  try {
+    const data = await api.getOpeningBalances()
+    setOpeningBalances(data)
+  } catch (err) {
+    console.error('Failed to reload opening balances:', err)
+  }
+}
+
+async function bulkAttendance(date, attendance) {
+  try {
+    const results = await api.bulkAttendance({ date, attendance })
+    // Reload employees to get updated attendance
+    const emps = await api.getEmployees()
+    const prods = products
+    setEmployees(emps.map(e => ({
+      ...e,
+      assignedProducts: e.assignedProducts.map(ap => {
+        const product = prods.find(p => p.code === ap.productCode)
+        return { ...ap, code: ap.productCode, name: product ? `${product.name} ${product.size}` : ap.productCode }
+      }),
+      weeklyAttendance: (e.weeklyAttendance || []).map(w => ({
+        ...w, dateFrom: w.dateFrom.split('T')[0], dateTo: w.dateTo.split('T')[0]
+      })),
+      productionLogs: e.productionLogs.map(l => {
+        const product = prods.find(p => p.code === l.productCode)
+        return { ...l, date: l.date.split('T')[0], code: l.productCode, name: product ? `${product.name} ${product.size}` : l.productCode }
+      }),
+      salaryHistory: e.salaryHistory.map(s => ({
+        ...s, paidDate: s.paidDate ? s.paidDate.split('T')[0] : null,
+        payments: (s.payments || []).map(p => ({ ...p, date: p.date.split('T')[0] }))
+      })),
+      advances: (e.advances || []).map(a => ({
+        ...a, date: a.date.split('T')[0],
+        repayments: (a.repayments || []).map(r => ({ ...r, date: r.date.split('T')[0] }))
+      }))
+    })))
+    return results
+  } catch (err) {
+    console.error('Failed bulk attendance:', err)
+  }
+}
+
+async function bulkProduction(date, entries) {
+  try {
+    const results = await api.bulkProduction({ date, entries })
+    const emps = await api.getEmployees()
+    const prods = products
+    setEmployees(emps.map(e => ({
+      ...e,
+      assignedProducts: e.assignedProducts.map(ap => {
+        const product = prods.find(p => p.code === ap.productCode)
+        return { ...ap, code: ap.productCode, name: product ? `${product.name} ${product.size}` : ap.productCode }
+      }),
+      weeklyAttendance: (e.weeklyAttendance || []).map(w => ({
+        ...w, dateFrom: w.dateFrom.split('T')[0], dateTo: w.dateTo.split('T')[0]
+      })),
+      productionLogs: e.productionLogs.map(l => {
+        const product = prods.find(p => p.code === l.productCode)
+        return { ...l, date: l.date.split('T')[0], code: l.productCode, name: product ? `${product.name} ${product.size}` : l.productCode }
+      }),
+      salaryHistory: e.salaryHistory.map(s => ({
+        ...s, paidDate: s.paidDate ? s.paidDate.split('T')[0] : null,
+        payments: (s.payments || []).map(p => ({ ...p, date: p.date.split('T')[0] }))
+      })),
+      advances: (e.advances || []).map(a => ({
+        ...a, date: a.date.split('T')[0],
+        repayments: (a.repayments || []).map(r => ({ ...r, date: r.date.split('T')[0] }))
+      }))
+    })))
+    return results
+  } catch (err) {
+    console.error('Failed bulk production:', err)
+  }
+}
+
+async function generateAllSalary(weekLabel, dateFrom, dateTo) {
+  try {
+    const results = await api.generateAllSalary({ weekLabel, dateFrom, dateTo })
+    // Reload employees
+    const emps = await api.getEmployees()
+    const prods = products
+    setEmployees(emps.map(e => ({
+      ...e,
+      assignedProducts: e.assignedProducts.map(ap => {
+        const product = prods.find(p => p.code === ap.productCode)
+        return { ...ap, code: ap.productCode, name: product ? `${product.name} ${product.size}` : ap.productCode }
+      }),
+      weeklyAttendance: (e.weeklyAttendance || []).map(w => ({
+        ...w, dateFrom: w.dateFrom.split('T')[0], dateTo: w.dateTo.split('T')[0]
+      })),
+      productionLogs: e.productionLogs.map(l => {
+        const product = prods.find(p => p.code === l.productCode)
+        return { ...l, date: l.date.split('T')[0], code: l.productCode, name: product ? `${product.name} ${product.size}` : l.productCode }
+      }),
+      salaryHistory: e.salaryHistory.map(s => ({
+        ...s, paidDate: s.paidDate ? s.paidDate.split('T')[0] : null,
+        payments: (s.payments || []).map(p => ({ ...p, date: p.date.split('T')[0] }))
+      })),
+      advances: (e.advances || []).map(a => ({
+        ...a, date: a.date.split('T')[0],
+        repayments: (a.repayments || []).map(r => ({ ...r, date: r.date.split('T')[0] }))
+      }))
+    })))
+    return results
+  } catch (err) {
+    console.error('Failed generate all salary:', err)
+  }
+}
   return (
     <AppContext.Provider value={{
        auth, login, logout, resetPassword,
@@ -619,8 +826,8 @@ async function addCastingCenter(centerData) {
     getFinishedStock, checkStockWarnings,
     markAsFinished, adjustStock,reloadStock,
     // employees
-    employees, addEmployee, logAttendance,
-    logProduction, generateWeeklySalary, paySalary,
+    employees, addEmployee, logWeeklyAttendance, logProduction,bulkAttendance, bulkProduction, generateAllSalary,
+    logProduction, generateWeeklySalary, paySalary,giveAdvance,recordSalaryPayment, recordAdvanceRepayment,
     // sales
     customers, addCustomer, addOrder,
     markDelivered, recordPayment,
@@ -630,6 +837,8 @@ async function addCastingCenter(centerData) {
     
     castingCenters, addCastingEntry, addCastingCenter, setCastingCenters,
     suppliers, addSupplier, addSupplierPurchase, setSuppliers,
+
+   openingBalances, reloadOpeningBalances,
     }}>
       {children}
     </AppContext.Provider >

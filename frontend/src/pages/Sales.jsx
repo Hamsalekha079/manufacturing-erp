@@ -290,7 +290,7 @@ function OrderCard({ order, customerId }) {
 // ─── CUSTOMER ROW ────────────────────────────────────────
 function CustomerRow({ customer }) {
   // const { customers, addCustomer, addWalkinSale, masterProducts } = useApp()
-  const { addOrder, checkStockWarnings, products } = useApp()
+  const { addOrder, checkStockWarnings, products, openingBalances  } = useApp()
   const [open, setOpen] = useState(false)
   const [showOrderModal, setShowOrderModal] = useState(false)
   const [stockWarnings, setStockWarnings] = useState([])
@@ -299,13 +299,17 @@ function CustomerRow({ customer }) {
     items: [{ code: '', name: '', qty: 1, price: 0 }]
   })
 
-  const allOrders = customer.orders
-  const totalBilled = allOrders.reduce((s, o) => s + o.totalAmount, 0)
-  const totalPaid = allOrders.reduce((s, o) =>
-    s + o.payments.reduce((sp, p) => sp + p.amount, 0), 0)
-  const balance = totalBilled - totalPaid
-  const hasOverdue = allOrders.some(o => getOrderStatus(o) === 'overdue')
-  const allPaid = allOrders.length > 0 && allOrders.every(o => getOrderStatus(o) === 'paid')
+const allOrders = customer.orders
+const ob = ((openingBalances || {}).customers || []).find(ob => ob.customerId === customer.id)
+const obBilled = ob?.totalBilled || 0
+const obReceived = ob?.amountReceived || 0
+
+const totalBilled = allOrders.reduce((s, o) => s + o.totalAmount, 0) + obBilled
+const totalPaid = allOrders.reduce((s, o) =>
+  s + o.payments.reduce((sp, p) => sp + p.amount, 0), 0) + obReceived
+const balance = totalBilled - totalPaid
+const hasOverdue = allOrders.some(o => getOrderStatus(o) === 'overdue')
+const allPaid = allOrders.length > 0 && allOrders.every(o => getOrderStatus(o) === 'paid') && balance <= 0
 
   const rowStyle = hasOverdue
     ? 'border-red-200 bg-red-50'
@@ -366,6 +370,20 @@ function selectProduct(index, productCode) {
 
   return (
     <div className={`border rounded-xl overflow-hidden ${rowStyle}`}>
+      {ob && ob.totalBilled > 0 && (
+  <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-3 flex flex-wrap justify-between items-center gap-2">
+    <div className="flex items-center gap-2">
+      <span className="text-xs bg-green-200 text-green-700 px-2 py-0.5 rounded-full font-medium">📋 Opening Balance</span>
+      {ob.lastDate && <span className="text-xs text-gray-400">as of {ob.lastDate.split('T')[0]}</span>}
+      {ob.lastPaymentType && <span className="text-xs text-gray-400">· Last: {ob.lastPaymentType}</span>}
+    </div>
+    <div className="flex gap-4 text-xs flex-wrap">
+      <span className="text-gray-700">Billed: ₹{ob.totalBilled.toLocaleString()}</span>
+      <span className="text-green-600">Received: ₹{ob.amountReceived.toLocaleString()}</span>
+      <span className="text-red-600 font-bold">Due: ₹{(ob.totalBilled - ob.amountReceived).toLocaleString()}</span>
+    </div>
+  </div>
+)}
       <div
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 cursor-pointer hover:opacity-90 transition"
         onClick={() => setOpen(!open)}

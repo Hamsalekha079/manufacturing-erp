@@ -45,6 +45,8 @@ deleteProduct: (code) => request('DELETE', `/products/${code}`),
   logProduction: (id, data) => request('POST', `/employees/${id}/production`, data),
   generateSalary: (id, data) => request('POST', `/employees/${id}/salary/generate`, data),
   paySalary: (id, salaryId, data) => request('POST', `/employees/${id}/salary/${salaryId}/pay`, data),
+  giveAdvance: (id, data) => request('POST', `/employees/${id}/advance`, data),
+getAdvances: (id) => request('GET', `/employees/${id}/advances`),
 
   // Customers
   getCustomers: () => request('GET', '/customers'),
@@ -86,4 +88,21 @@ deleteProduct: (code) => request('DELETE', `/products/${code}`),
   request('POST', `/materials/waste-casting/${id}/payment`, { amount }),
 receivePendingWasteCasting: (id, additionalKg) =>
   request('PATCH', `/materials/waste-casting/${id}/receive`, { additionalKg }),
+
+recordSalaryPayment: (empId, salaryId, data) =>
+  request('POST', `/employees/${empId}/salary/${salaryId}/payment`, data),
+recordAdvanceRepayment: (empId, advanceId, data) =>
+  request('POST', `/employees/${empId}/advance/${advanceId}/repayment`, data),
+logWeeklyAttendance: (id, data) => request('POST', `/employees/${id}/weekly-attendance`, data),
+// Opening Balance
+getOpeningBalances: () => request('GET', '/opening-balance/all'),
+saveSupplierOB: (data) => request('POST', '/opening-balance/supplier', data),
+saveCastingOB: (data) => request('POST', '/opening-balance/casting', data),
+saveCustomerOB: (data) => request('POST', '/opening-balance/customer', data),
+saveEmployeeOB: (data) => request('POST', '/opening-balance/employee', data),
+saveFinanceOB: (data) => request('POST', '/opening-balance/finance', data),
+
+bulkAttendance: (data) => request('POST', '/employees/attendance/bulk', data),
+bulkProduction: (data) => request('POST', '/employees/production/bulk', data),
+generateAllSalary: (data) => request('POST', '/employees/salary/generate-all', data),
 }

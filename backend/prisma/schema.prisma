@@ -39,32 +39,34 @@ model Product {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  orderItems    OrderItem[]
-  walkinItems   WalkinItem[]
+  orderItems     OrderItem[]
+  walkinItems    WalkinItem[]
   productionLogs ProductionLog[]
-  semiFinished  SemiFinishedStock?
-  finished      FinishedStock?
+  semiFinished   SemiFinishedStock?
+  finished       FinishedStock?
 }
+
 model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
   createdAt DateTime @default(now())
 }
+
 // ─── STOCK ───────────────────────────────────────────────
 model SemiFinishedStock {
-  id        Int      @id @default(autoincrement())
-  productCode String @unique
-  product   Product  @relation(fields: [productCode], references: [code])
-  stock     Int      @default(0)
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  productCode String   @unique
+  product     Product  @relation(fields: [productCode], references: [code])
+  stock       Int      @default(0)
+  updatedAt   DateTime @updatedAt
 }
 
 model FinishedStock {
-  id        Int      @id @default(autoincrement())
-  productCode String @unique
-  product   Product  @relation(fields: [productCode], references: [code])
-  stock     Int      @default(0)
-  updatedAt DateTime @updatedAt
+  id          Int      @id @default(autoincrement())
+  productCode String   @unique
+  product     Product  @relation(fields: [productCode], references: [code])
+  stock       Int      @default(0)
+  updatedAt   DateTime @updatedAt
 }
 
 // ─── SUPPLIERS ───────────────────────────────────────────
@@ -75,7 +77,8 @@ model Supplier {
   paymentMode String   @default("POSTPAID")
   createdAt   DateTime @default(now())
 
-  purchases   RawMaterialPurchase[]
+  purchases      RawMaterialPurchase[]
+  openingBalance SupplierOpeningBalance?
 }
 
 model RawMaterialPurchase {
@@ -90,6 +93,7 @@ model RawMaterialPurchase {
   paidAmount   Float    @default(0)
   date         DateTime @default(now())
   createdAt    DateTime @default(now())
+
   payments MaterialPayment[]
 }
 
@@ -100,23 +104,25 @@ model CastingCenter {
   phone     String?
   createdAt DateTime @default(now())
 
-  castingEntries CastingEntry[]
+  castingEntries  CastingEntry[]
+  openingBalances CastingOpeningBalance[]
 }
 
 model CastingEntry {
-  id         Int           @id @default(autoincrement())
-  centerId   Int
-  center     CastingCenter @relation(fields: [centerId], references: [id])
-  type       CastingType   @default(ROUND1)
-  sentKg     Float
-  returnedKg Float         @default(0)
-  pendingKg  Float         @default(0)
-  extraKg    Float         @default(0)
-  ratePerKg  Float
+  id          Int           @id @default(autoincrement())
+  centerId    Int
+  center      CastingCenter @relation(fields: [centerId], references: [id])
+  type        CastingType   @default(ROUND1)
+  sentKg      Float
+  returnedKg  Float         @default(0)
+  pendingKg   Float         @default(0)
+  extraKg     Float         @default(0)
+  ratePerKg   Float
   totalAmount Float
-  paidAmount Float         @default(0)
-  date       DateTime      @default(now())
-  createdAt  DateTime      @default(now())
+  paidAmount  Float         @default(0)
+  date        DateTime      @default(now())
+  createdAt   DateTime      @default(now())
+
   payments CastingPayment[]
 }
 
@@ -138,19 +144,21 @@ model ProductionRun {
 
 // ─── EMPLOYEES ───────────────────────────────────────────
 model Employee {
-  id           Int         @id @default(autoincrement())
-  name         String
-  phone        String?
-  role         String?
-  salaryType   SalaryType  @default(DAILY)
-  dailyRate    Float       @default(0)
-  status       String      @default("active")
-  createdAt    DateTime    @default(now())
+  id         Int        @id @default(autoincrement())
+  name       String
+  phone      String?
+  role       String?
+  salaryType SalaryType @default(DAILY)
+  dailyRate  Float      @default(0)
+  status     String     @default("active")
+  createdAt  DateTime   @default(now())
 
   assignedProducts AssignedProduct[]
-  attendanceLogs   AttendanceLog[]
+  weeklyAttendance WeeklyAttendance[]
   productionLogs   ProductionLog[]
   salaryHistory    SalaryRecord[]
+  advances         EmployeeAdvance[]
+  openingBalance   EmployeeOpeningBalance?
 }
 
 enum SalaryType {
@@ -159,21 +167,24 @@ enum SalaryType {
 }
 
 model AssignedProduct {
-  id         Int      @id @default(autoincrement())
-  employeeId Int
-  employee   Employee @relation(fields: [employeeId], references: [id])
+  id          Int      @id @default(autoincrement())
+  employeeId  Int
+  employee    Employee @relation(fields: [employeeId], references: [id])
   productCode String
-  workType   String
-  rate       Float
-  createdAt  DateTime @default(now())
+  workType    String
+  rate        Float
+  createdAt   DateTime @default(now())
 }
 
-model AttendanceLog {
+model WeeklyAttendance {
   id         Int      @id @default(autoincrement())
   employeeId Int
   employee   Employee @relation(fields: [employeeId], references: [id])
-  date       DateTime
-  status     String
+  weekLabel  String
+  dateFrom   DateTime
+  dateTo     DateTime
+  fullDays   Int      @default(0)
+  halfDays   Int      @default(0)
   createdAt  DateTime @default(now())
 }
 
@@ -191,15 +202,19 @@ model ProductionLog {
 }
 
 model SalaryRecord {
-  id         Int      @id @default(autoincrement())
-  employeeId Int
-  employee   Employee @relation(fields: [employeeId], references: [id])
-  week       String
-  amount     Float
-  paid       Boolean  @default(false)
-  paidDate   DateTime?
-  method     String?
-  createdAt  DateTime @default(now())
+  id              Int      @id @default(autoincrement())
+  employeeId      Int
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  week            String
+  amount          Float
+  paidAmount      Float    @default(0)
+  advanceDeducted Float    @default(0)
+  paid            Boolean  @default(false)
+  paidDate        DateTime?
+  method          String?
+  createdAt       DateTime @default(now())
+
+  payments SalaryPayment[]
 }
 
 // ─── CUSTOMERS & SALES ───────────────────────────────────
@@ -211,21 +226,22 @@ model Customer {
   locationType String   @default("non-local")
   createdAt    DateTime @default(now())
 
-  orders       Order[]
+  orders         Order[]
+  openingBalance CustomerOpeningBalance?
 }
 
 model Order {
-  id             Int           @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   customerId     Int
-  customer       Customer      @relation(fields: [customerId], references: [id])
-  date           DateTime      @default(now())
+  customer       Customer @relation(fields: [customerId], references: [id])
+  date           DateTime @default(now())
   dueDate        DateTime?
-  deliveryStatus String        @default("pending")
+  deliveryStatus String   @default("pending")
   totalAmount    Float
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime @default(now())
 
-  items          OrderItem[]
-  payments       Payment[]
+  items    OrderItem[]
+  payments Payment[]
 }
 
 model OrderItem {
@@ -240,25 +256,25 @@ model OrderItem {
 }
 
 model Payment {
-  id        Int      @id @default(autoincrement())
-  orderId   Int
-  order     Order    @relation(fields: [orderId], references: [id])
-  amount    Float
-  method    String
-  date      DateTime @default(now())
+  id      Int      @id @default(autoincrement())
+  orderId Int
+  order   Order    @relation(fields: [orderId], references: [id])
+  amount  Float
+  method  String
+  date    DateTime @default(now())
 }
 
 // ─── WALK-IN SALES ───────────────────────────────────────
 model WalkinSale {
-  id        Int          @id @default(autoincrement())
+  id        Int        @id @default(autoincrement())
   name      String
   phone     String?
   method    String
   amount    Float
-  date      DateTime     @default(now())
-  createdAt DateTime     @default(now())
+  date      DateTime   @default(now())
+  createdAt DateTime   @default(now())
 
-  items     WalkinItem[]
+  items WalkinItem[]
 }
 
 model WalkinItem {
@@ -292,13 +308,13 @@ model Expense {
 }
 
 model MaterialPayment {
-  id         Int      @id @default(autoincrement())
+  id         Int                 @id @default(autoincrement())
   purchaseId Int
   purchase   RawMaterialPurchase @relation(fields: [purchaseId], references: [id])
   amount     Float
-  date       DateTime @default(now())
+  date       DateTime            @default(now())
   note       String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime            @default(now())
 }
 
 model CastingPayment {
@@ -309,4 +325,104 @@ model CastingPayment {
   date      DateTime     @default(now())
   note      String?
   createdAt DateTime     @default(now())
+}
+
+model EmployeeAdvance {
+  id              Int      @id @default(autoincrement())
+  employeeId      Int
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  amount          Float
+  remainingAmount Float    @default(0)
+  recoveryType    String   @default("manual")
+  date            DateTime @default(now())
+  note            String?
+  recovered       Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  repayments AdvanceRepayment[]
+}
+
+model AdvanceRepayment {
+  id        Int             @id @default(autoincrement())
+  advanceId Int
+  advance   EmployeeAdvance @relation(fields: [advanceId], references: [id])
+  amount    Float
+  method    String?
+  date      DateTime        @default(now())
+  note      String?
+  createdAt DateTime        @default(now())
+}
+
+model SalaryPayment {
+  id        Int          @id @default(autoincrement())
+  salaryId  Int
+  salary    SalaryRecord @relation(fields: [salaryId], references: [id])
+  amount    Float
+  method    String?
+  date      DateTime     @default(now())
+  note      String?
+  createdAt DateTime     @default(now())
+}
+
+// ─── OPENING BALANCES ────────────────────────────────────
+model SupplierOpeningBalance {
+  id              Int      @id @default(autoincrement())
+  supplierId      Int      @unique
+  supplier        Supplier @relation(fields: [supplierId], references: [id])
+  orderedKg       Float    @default(0)
+  receivedKg      Float    @default(0)
+  pendingKg       Float    @default(0)
+  totalAmount     Float    @default(0)
+  paidAmount      Float    @default(0)
+  lastDate        DateTime?
+  lastPaymentType String?
+  note            String?
+  createdAt       DateTime @default(now())
+}
+
+model CastingOpeningBalance {
+  id              Int           @id @default(autoincrement())
+  centerId        Int
+  center          CastingCenter @relation(fields: [centerId], references: [id])
+  type            CastingType   @default(ROUND1)
+  sentKg          Float         @default(0)
+  returnedKg      Float         @default(0)
+  pendingKg       Float         @default(0)
+  totalAmount     Float         @default(0)
+  paidAmount      Float         @default(0)
+  lastDate        DateTime?
+  lastPaymentType String?
+  note            String?
+  createdAt       DateTime      @default(now())
+}
+
+model CustomerOpeningBalance {
+  id              Int      @id @default(autoincrement())
+  customerId      Int      @unique
+  customer        Customer @relation(fields: [customerId], references: [id])
+  totalBilled     Float    @default(0)
+  amountReceived  Float    @default(0)
+  lastDate        DateTime?
+  lastPaymentType String?
+  note            String?
+  createdAt       DateTime @default(now())
+}
+
+model EmployeeOpeningBalance {
+  id              Int      @id @default(autoincrement())
+  employeeId      Int      @unique
+  employee        Employee @relation(fields: [employeeId], references: [id])
+  pendingSalary   Float    @default(0)
+  pendingAdvance  Float    @default(0)
+  lastDate        DateTime?
+  note            String?
+  createdAt       DateTime @default(now())
+}
+
+model FinanceOpeningBalance {
+  id          Int      @id @default(autoincrement())
+  cashInHand  Float    @default(0)
+  bankBalance Float    @default(0)
+  date        DateTime @default(now())
+  note        String?
+  createdAt   DateTime @default(now())
 }

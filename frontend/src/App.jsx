@@ -9,6 +9,7 @@ import Sales from './pages/Sales'
 import Stock from './pages/Stock'
 import Finance from './pages/Finance'
 import Products from './pages/Products'
+import OpeningBalance from './pages/OpeningBalance'
 
 function App() {
   const { auth } = useApp()
@@ -30,6 +31,7 @@ function App() {
           <Route path="stock" element={<Stock />} />
           <Route path="finance" element={<Finance />} />
          <Route path="products" element={<Products />} />
+         <Route path="opening-balance" element={<OpeningBalance />} />
         </Route>
       </Routes>
     </BrowserRouter>

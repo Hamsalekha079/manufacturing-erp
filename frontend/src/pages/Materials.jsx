@@ -169,7 +169,7 @@ function PaymentHistoryModal({ entry, onClose, onPayment, apiFunc, stateKey }) {
 
 // ─── TAB 1: RAW MATERIAL ────────────────────────────────
 function RawMaterialTab() {
-  const { suppliers, setSuppliers, addSupplier, addSupplierPurchase } = useApp()
+  const { suppliers, setSuppliers, addSupplier, addSupplierPurchase , openingBalances } = useApp()
   const [payingEntry, setPayingEntry] = useState(null)
   const [receivingEntry, setReceivingEntry] = useState(null)
   const [receiveKg, setReceiveKg] = useState('')
@@ -219,10 +219,14 @@ setForm({ supplierName: '', materialType: 'Copper', orderedKg: '', receivedKg: '
     .map(s => ({ ...s, entries: s.entries || [] }))
 
   const allEntries = suppliers.flatMap(s => s.entries || [])
-  const totalOrdered = allEntries.reduce((s, e) => s + e.orderedKg, 0)
-  const totalReceived = allEntries.reduce((s, e) => s + e.receivedKg, 0)
-  const totalCost = allEntries.reduce((s, e) => s + e.totalAmount, 0)
-  const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
+const totalOrdered = allEntries.reduce((s, e) => s + e.orderedKg, 0) +
+  ((openingBalances || {}).suppliers || []).reduce((s, ob) => s + ob.orderedKg, 0)
+const totalReceived = allEntries.reduce((s, e) => s + e.receivedKg, 0) +
+  ((openingBalances || {}).suppliers || []).reduce((s, ob) => s + ob.receivedKg, 0)
+const totalCost = allEntries.reduce((s, e) => s + e.totalAmount, 0) +
+  ((openingBalances || {}).suppliers || []).reduce((s, ob) => s + ob.totalAmount, 0)
+const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0) +
+  ((openingBalances || {}).suppliers || []).reduce((s, ob) => s + ob.paidAmount, 0)
 
   return (
     <div className="space-y-4">
@@ -318,6 +322,30 @@ setForm({ supplierName: '', materialType: 'Copper', orderedKg: '', receivedKg: '
               </div>
               {isOpen && (
                 <div className="border-t border-gray-100 overflow-x-auto">
+               
+    {/* Opening Balance row */}
+    {(() => {
+      const ob = ((openingBalances || {}).suppliers || []).find(ob => ob.supplierId === supplier.id)
+      if (!ob || ob.totalAmount === 0) return null
+      return (
+        <div className="bg-blue-50 border-b border-blue-100 px-5 py-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs bg-blue-200 text-blue-700 px-2 py-0.5 rounded-full font-medium">Opening Balance</span>
+              {ob.lastDate && <span className="text-xs text-gray-400">as of {ob.lastDate.split('T')[0]}</span>}
+            </div>
+            <div className="flex gap-4 text-xs flex-wrap">
+              <span className="text-gray-600">{ob.orderedKg}kg ordered / {ob.receivedKg}kg received</span>
+              {ob.pendingKg > 0 && <span className="text-orange-500">{ob.pendingKg}kg pending</span>}
+              <span className="text-gray-800 font-bold">Total: ₹{ob.totalAmount.toLocaleString()}</span>
+              <span className="text-green-600">Paid: ₹{ob.paidAmount.toLocaleString()}</span>
+              <span className="text-red-500 font-bold">Due: ₹{(ob.totalAmount - ob.paidAmount).toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+      )
+    })()}
+   
                   {supplier.entries.length === 0 ? (
                     <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p>
                   ) : (
@@ -556,7 +584,7 @@ setForm({ supplierName: '', materialType: 'Copper', orderedKg: '', receivedKg: '
 
 // ─── TAB 2: CASTING ─────────────────────────────────────
 function CastingRound1Tab() {
-  const { castingCenters, addCastingEntry, addCastingCenter, setCastingCenters } = useApp()
+  const { castingCenters, addCastingEntry, addCastingCenter, setCastingCenters, openingBalances  } = useApp()
   const [showModal, setShowModal] = useState(false)
   const [showAddCenter, setShowAddCenter] = useState(false)
   const [openCenters, setOpenCenters] = useState({})
@@ -579,6 +607,7 @@ function CastingRound1Tab() {
     const ratePerKg = parseFloat(form.ratePerKg)
     const totalAmount = sentKg * ratePerKg
     const initialPaid = parseFloat(form.initialPayment || 0)
+    const totalExtra = allEntries.reduce((s, e) => s + (e.extraKg || 0), 0)
     await addCastingEntry({
   centerId: center.id,
   type: 'ROUND1', // or 'ROUND2_WASTE'
@@ -602,15 +631,15 @@ setForm({ centerName: '', sentKg: '', returnedKg: '', ratePerKg: '', initialPaym
     .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
     .map(c => ({ ...c, entries: (c.entries || []).filter(e => e.type === 'ROUND1') }))
 
-  const allEntries = castingCenters.flatMap(c => (c.entries || []).filter(e => e.type === 'ROUND1'))
-  const totalSent = allEntries.reduce((s, e) => s + e.sentKg, 0)
-  const totalReturned = allEntries.reduce((s, e) => s + e.returnedKg, 0)
-  const totalPending = allEntries.reduce((s, e) => s + e.pendingKg, 0)
-  const totalExtra = allEntries.reduce((s, e) => s + (e.extraKg || 0), 0)
-  const totalCharges = allEntries.reduce((s, e) => s + e.totalAmount, 0)
-  const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
-
-  return (
+const allEntries = castingCenters.flatMap(c => (c.entries || []).filter(e => e.type === 'ROUND1'))
+const castingOBs = ((openingBalances || {}).casting || []).filter(ob => ob.type === 'ROUND1')
+const totalSent = allEntries.reduce((s, e) => s + e.sentKg, 0) + castingOBs.reduce((s, ob) => s + ob.sentKg, 0)
+const totalReturned = allEntries.reduce((s, e) => s + e.returnedKg, 0) + castingOBs.reduce((s, ob) => s + ob.returnedKg, 0)
+const totalPending = allEntries.reduce((s, e) => s + e.pendingKg, 0) + castingOBs.reduce((s, ob) => s + ob.pendingKg, 0)
+const totalCharges = allEntries.reduce((s, e) => s + e.totalAmount, 0) + castingOBs.reduce((s, ob) => s + ob.totalAmount, 0)
+const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0) + castingOBs.reduce((s, ob) => s + ob.paidAmount, 0)
+const totalExtra = allEntries.reduce((s, e) => s + (e.extraKg || 0), 0)  
+return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white rounded-xl shadow p-4 sm:p-5"><p className="text-sm text-gray-500">Sent to Casting</p><p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{totalSent} kg</p></div>
@@ -660,6 +689,27 @@ setForm({ centerName: '', sentKg: '', returnedKg: '', ratePerKg: '', initialPaym
               </div>
               {isOpen && (
                 <div className="border-t border-gray-100 overflow-x-auto">
+                  {(() => {
+  const ob = ((openingBalances || {}).casting || []).find(ob => ob.centerId === center.id && ob.type === 'ROUND1')
+  if (!ob || ob.totalAmount === 0) return null
+  return (
+    <div className="bg-purple-50 border-b border-purple-100 px-5 py-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full font-medium">Opening Balance</span>
+          {ob.lastDate && <span className="text-xs text-gray-400">as of {ob.lastDate.split('T')[0]}</span>}
+        </div>
+        <div className="flex gap-4 text-xs flex-wrap">
+          <span className="text-gray-600">{ob.sentKg}kg sent / {ob.returnedKg}kg returned</span>
+          {ob.pendingKg > 0 && <span className="text-orange-500">{ob.pendingKg}kg pending</span>}
+          <span className="text-gray-800 font-bold">Charges: ₹{ob.totalAmount.toLocaleString()}</span>
+          <span className="text-green-600">Paid: ₹{ob.paidAmount.toLocaleString()}</span>
+          <span className="text-red-500 font-bold">Due: ₹{(ob.totalAmount - ob.paidAmount).toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+  )
+})()}
                   {center.entries.length === 0 ? <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p> : (
                     <table className="w-full min-w-[760px]">
                       <thead className="bg-gray-50">
@@ -830,7 +880,7 @@ setForm({ centerName: '', sentKg: '', returnedKg: '', ratePerKg: '', initialPaym
 
 // ─── TAB 3: WASTE & CASTING ─────────────────────────────
 function WasteCastingTab() {
-  const { castingCenters, addCastingEntry, addCastingCenter, setCastingCenters } = useApp()
+  const { castingCenters, addCastingEntry, addCastingCenter, setCastingCenters , openingBalances } = useApp()
   const [showModal, setShowModal] = useState(false)
   const [showAddCenter, setShowAddCenter] = useState(false)
   const [openCenters, setOpenCenters] = useState({})
@@ -879,13 +929,14 @@ async function handleSubmit() {
     .filter(c => c.name.toLowerCase().includes(search.toLowerCase()))
     .map(c => ({ ...c, entries: (c.entries || []).filter(e => e.type === 'ROUND2_WASTE') }))
 
-  const allEntries = castingCenters.flatMap(c => (c.entries || []).filter(e => e.type === 'ROUND2_WASTE'))
-  const totalWaste = allEntries.reduce((s, e) => s + e.sentKg, 0)
-  const totalReturned = allEntries.reduce((s, e) => s + e.returnedKg, 0)
-  const totalPending = allEntries.reduce((s, e) => s + e.pendingKg, 0)
-  const totalCharges = allEntries.reduce((s, e) => s + e.totalAmount, 0)
-  const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0)
-
+  const allEntries = castingCenters.flatMap(c => (c.entries || []).filter(e => e.type === 'ROUND1'))
+const castingOBs = ((openingBalances || {}).casting || []).filter(ob => ob.type === 'ROUND1')
+const totalSent = allEntries.reduce((s, e) => s + e.sentKg, 0) + castingOBs.reduce((s, ob) => s + ob.sentKg, 0)
+const totalReturned = allEntries.reduce((s, e) => s + e.returnedKg, 0) + castingOBs.reduce((s, ob) => s + ob.returnedKg, 0)
+const totalPending = allEntries.reduce((s, e) => s + e.pendingKg, 0) + castingOBs.reduce((s, ob) => s + ob.pendingKg, 0)
+const totalCharges = allEntries.reduce((s, e) => s + e.totalAmount, 0) + castingOBs.reduce((s, ob) => s + ob.totalAmount, 0)
+const totalPaid = allEntries.reduce((s, e) => s + e.paidAmount, 0) + castingOBs.reduce((s, ob) => s + ob.paidAmount, 0)
+const totalWaste = allEntries.reduce((s, e) => s + e.sentKg, 0)
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
@@ -934,6 +985,27 @@ async function handleSubmit() {
               </div>
               {isOpen && (
                 <div className="border-t border-gray-100 overflow-x-auto">
+                  {(() => {
+  const ob = ((openingBalances || {}).casting || []).find(ob => ob.centerId === center.id && ob.type === 'ROUND1')
+  if (!ob || ob.totalAmount === 0) return null
+  return (
+    <div className="bg-purple-50 border-b border-purple-100 px-5 py-3">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs bg-purple-200 text-purple-700 px-2 py-0.5 rounded-full font-medium">Opening Balance</span>
+          {ob.lastDate && <span className="text-xs text-gray-400">as of {ob.lastDate.split('T')[0]}</span>}
+        </div>
+        <div className="flex gap-4 text-xs flex-wrap">
+          <span className="text-gray-600">{ob.sentKg}kg sent / {ob.returnedKg}kg returned</span>
+          {ob.pendingKg > 0 && <span className="text-orange-500">{ob.pendingKg}kg pending</span>}
+          <span className="text-gray-800 font-bold">Charges: ₹{ob.totalAmount.toLocaleString()}</span>
+          <span className="text-green-600">Paid: ₹{ob.paidAmount.toLocaleString()}</span>
+          <span className="text-red-500 font-bold">Due: ₹{(ob.totalAmount - ob.paidAmount).toLocaleString()}</span>
+        </div>
+      </div>
+    </div>
+  )
+})()}
                   {center.entries.length === 0 ? <p className="text-sm text-gray-400 px-5 py-4">No entries yet</p> : (
                     <table className="w-full min-w-[760px]">
                       <thead className="bg-gray-50">

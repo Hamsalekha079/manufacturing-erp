@@ -15,7 +15,7 @@ function InvestCard({ label, amount, color, onClick }) {
 
 function Dashboard() {
   const navigate = useNavigate()
-  const { income, expenses, customers, finished } = useApp()
+  const { income, expenses, customers, finished , openingBalances} = useApp()
 
   // ─── FINANCE CALCULATIONS ─────────────────────────────
   const totalIncome = income.reduce((s, i) => s + i.amount, 0)
@@ -32,7 +32,10 @@ function Dashboard() {
   const totalBilled = allOrders.reduce((s, o) => s + o.totalAmount, 0)
   const totalReceived = allOrders.reduce((s, o) =>
     s + (o.payments || []).reduce((sp, p) => sp + p.amount, 0), 0)
-  const totalPending = totalBilled - totalReceived
+ 
+const obCustomerBalance = ((openingBalances || {}).customers || [])
+  .reduce((s, ob) => s + (ob.totalBilled - ob.amountReceived), 0)
+const totalPending = totalBilled - totalReceived + obCustomerBalance
   const totalOverdue = allOrders
     .filter(o => {
       const paid = (o.payments || []).reduce((s, p) => s + p.amount, 0)

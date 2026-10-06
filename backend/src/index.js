@@ -14,6 +14,7 @@ const customerRoutes = require('./routes/customers')
 const stockRoutes = require('./routes/stock')
 const financeRoutes = require('./routes/finance')
 const materialRoutes = require('./routes/materials')
+const openingBalanceRoutes = require('./routes/opening-balance')
 
 app.use('/api/auth', authRoutes)
 app.use('/api/products', productRoutes)
@@ -22,6 +23,7 @@ app.use('/api/customers', customerRoutes)
 app.use('/api/stock', stockRoutes)
 app.use('/api/finance', financeRoutes)
 app.use('/api/materials', materialRoutes)
+app.use('/api/opening-balance', openingBalanceRoutes)
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -32,4 +34,6 @@ const port = process.env.PORT || 5000
 app.listen(port, () => {
   console.log(`Server running on port ${port}`)
 })
+
+
 

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 import {
   LayoutDashboard, Package, Users,
-  ShoppingCart, Boxes, DollarSign, Tag, X
+  ShoppingCart, Boxes, DollarSign, Tag, X, BookOpen 
 } from 'lucide-react'
 
 const links = [
@@ -13,6 +13,7 @@ const links = [
   { to: '/stock', icon: Boxes, label: 'Stock' },
   { to: '/finance', icon: DollarSign, label: 'Finance' },
   { to: '/products', icon: Tag, label: 'Products' },
+  { to: '/opening-balance', icon: BookOpen, label: 'Opening Balance' },
 ]
 
 function Sidebar({ isOpen, onClose }) {

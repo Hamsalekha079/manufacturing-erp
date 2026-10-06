@@ -26,13 +26,27 @@ router.get('/', auth, async (req, res) => {
 // POST add customer
 router.post('/', auth, async (req, res) => {
   try {
-    const customer = await prisma.customer.create({ data: req.body })
+    const { name, phone, location, type, obAmount, obReceivedAmount, obDirection, obDate, obPaymentType, obNote } = req.body
+    const customer = await prisma.customer.create({ data: { name, phone, location, type } })
+
+    if (obAmount && parseFloat(obAmount) > 0) {
+      await prisma.customerOpeningBalance.create({
+        data: {
+          customerId: customer.id,
+          totalBilled: parseFloat(obAmount),
+          amountReceived: parseFloat(obReceivedAmount || 0),
+          lastDate: obDate ? new Date(obDate) : null,
+          lastPaymentType: obPaymentType || null,
+          note: obNote || null
+        }
+      })
+    }
+
     res.json(customer)
   } catch (err) {
     res.status(500).json({ error: err.message })
   }
 })
-
 // POST add order
 router.post('/:id/orders', auth, async (req, res) => {
   try {
