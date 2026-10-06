@@ -1,6 +1,6 @@
 // const BASE_URL = 'http://localhost:5000/api'
-const BASE_URL = 'https://manufacturing-erp-xi.vercel.app/api'
-
+// const BASE_URL = 'https://manufacturing-erp-xi.vercel.app/api'
+const BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`
 function getToken() {
   return localStorage.getItem('token')
 }
