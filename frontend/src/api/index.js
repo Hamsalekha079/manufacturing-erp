@@ -1,4 +1,5 @@
-const BASE_URL = 'http://localhost:5000/api'
+// const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = 'https://manufacturing-erp-xi.vercel.app/api'
 
 function getToken() {
   return localStorage.getItem('token')
