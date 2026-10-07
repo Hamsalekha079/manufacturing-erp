@@ -300,7 +300,8 @@ async function login(username, password) {
 
 function logout() {
   localStorage.removeItem('token')
-  setAuth(prev => ({ ...prev, isLoggedIn: false }))
+  setAuth(null)
+  window.location.href = '/login'
 }
 
 function resetPassword(newPassword) {
@@ -816,6 +817,11 @@ async function generateAllSalary(weekLabel, dateFrom, dateTo) {
     console.error('Failed generate all salary:', err)
   }
 }
+
+// function logout() {
+//   localStorage.removeItem('token')
+//   setUser(null)
+// }
   return (
     <AppContext.Provider value={{
        auth, login, logout, resetPassword,
