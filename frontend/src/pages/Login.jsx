@@ -24,11 +24,9 @@ function Login() {
     }
     const success = login(form.username, form.password)
 
-    if (success) {
-    navigate('/dashboard')
-  } else {
-    setError('Invalid username or password')
-  }
+    if (!success) {
+      setError('Invalid username or password')
+    }
   }
 
   function handleVerifyContact() {
