@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext'
 
 function Login() {
   const { login, auth, resetPassword } = useApp()
+  const navigate = useNavigate()
   const [view, setView] = useState('login') // login | forgot-verify | forgot-otp | forgot-reset
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
@@ -22,9 +23,12 @@ function Login() {
       return
     }
     const success = login(form.username, form.password)
-    if (!success) {
-      setError('Invalid username or password')
-    }
+
+    if (success) {
+    navigate('/dashboard')
+  } else {
+    setError('Invalid username or password')
+  }
   }
 
   function handleVerifyContact() {
@@ -79,7 +83,7 @@ function Login() {
         {/* Logo / Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <span className="text-white text-2xl font-bold">RC</span>
+            <span className="text-white text-2xl font-bold">CW</span>
           </div>
           <h1 className="text-2xl font-bold text-gray-800">Rajesh Copper Works</h1>
           <p className="text-sm text-gray-500 mt-1">Manufacturing ERP</p>
