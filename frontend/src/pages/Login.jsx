@@ -1,9 +1,10 @@
 import { useState } from 'react'
+// import { useNavigate } from 'react-router-dom'
 import { useApp } from '../context/AppContext'
 
 function Login() {
   const { login, auth, resetPassword } = useApp()
-  const navigate = useNavigate()
+  // const navigate = useNavigate()
   const [view, setView] = useState('login') // login | forgot-verify | forgot-otp | forgot-reset
   const [form, setForm] = useState({ username: '', password: '' })
   const [error, setError] = useState('')
@@ -16,18 +17,19 @@ function Login() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [resetSuccess, setResetSuccess] = useState(false)
 
-  function handleLogin() {
-    setError('')
-    if (!form.username || !form.password) {
-      setError('Please enter username and password')
-      return
-    }
-    const success = login(form.username, form.password)
-
-    if (!success) {
-      setError('Invalid username or password')
-    }
+  async function handleLogin() {
+  setError('')
+  if (!form.username || !form.password) {
+    setError('Please enter username and password')
+    return
   }
+  try {
+    const success = await login(form.username, form.password)
+    if (!success) setError('Invalid username or password')
+  } catch (err) {
+    setError(err.message || 'Invalid username or password')
+  }
+}
 
   function handleVerifyContact() {
     setError('')
