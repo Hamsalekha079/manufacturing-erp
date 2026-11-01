@@ -4,12 +4,14 @@ const cors = require('cors')
 
 const app = express()
 // app.use(cors({ origin: process.env.CLIENT_URL || '*' }))
-app.use(cors({
-  origin: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-}))
-app.options('/{*splat}', cors())
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*')
+  res.setHeader('Vary', 'Origin')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  if (req.method === 'OPTIONS') return res.status(204).end()
+  next()
+})
 app.use(express.json())
 
 // Routes
