@@ -3,7 +3,13 @@ const express = require('express')
 const cors = require('cors')
 
 const app = express()
-app.use(cors({ origin: process.env.CLIENT_URL || '*' }))
+// app.use(cors({ origin: process.env.CLIENT_URL || '*' }))
+app.use(cors({
+  origin: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}))
+app.options('/{*splat}', cors())
 app.use(express.json())
 
 // Routes
