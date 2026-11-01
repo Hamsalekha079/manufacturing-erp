@@ -17,7 +17,7 @@ function Login() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [resetSuccess, setResetSuccess] = useState(false)
 
-  async function handleLogin() {
+ async function handleLogin() {
   setError('')
   if (!form.username || !form.password) {
     setError('Please enter username and password')
@@ -25,7 +25,8 @@ function Login() {
   }
   try {
     const success = await login(form.username, form.password)
-    if (!success) setError('Invalid username or password')
+    if (success) navigate('/', { replace: true })
+    else setError('Invalid username or password')
   } catch (err) {
     setError(err.message || 'Invalid username or password')
   }
